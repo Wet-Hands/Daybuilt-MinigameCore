@@ -146,7 +146,9 @@ impl Config {
     /// Parses the owner's file (if any) over the embedded default.
     pub fn parse(user: Option<&str>) -> Result<Self, String> {
         let table = toml_util::merged(DEFAULT_TOML, user)?;
-        let cfg: Config = table.try_into().map_err(|e: toml::de::Error| e.to_string())?;
+        let cfg: Config = table
+            .try_into()
+            .map_err(|e: toml::de::Error| e.to_string())?;
         cfg.validate()?;
         Ok(cfg)
     }
@@ -155,7 +157,9 @@ impl Config {
         let ns = &self.placeholders.namespace;
         if ns.is_empty()
             || !ns.starts_with(|c: char| c.is_ascii_lowercase())
-            || !ns.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit())
+            || !ns
+                .chars()
+                .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit())
             || ["player", "server", "pie"].contains(&ns.as_str())
         {
             return Err(format!(
@@ -163,7 +167,9 @@ impl Config {
             ));
         }
         if self.timing.position_check_ticks == 0 || self.timing.reset_blocks_per_tick == 0 {
-            return Err("timing.position_check_ticks and reset_blocks_per_tick must be at least 1".into());
+            return Err(
+                "timing.position_check_ticks and reset_blocks_per_tick must be at least 1".into(),
+            );
         }
         if !self.lobby.auto_join.is_empty() {
             let mode = self.lobby.auto_join.split(':').next().unwrap_or("");

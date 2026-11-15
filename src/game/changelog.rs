@@ -23,16 +23,9 @@ impl ChangeLog {
         true
     }
 
-    pub fn contains(&self, pos: &BlockPos) -> bool {
-        self.originals.contains_key(pos)
-    }
-
+    #[cfg(test)]
     pub fn original(&self, pos: &BlockPos) -> Option<u16> {
         self.originals.get(pos).copied()
-    }
-
-    pub fn len(&self) -> usize {
-        self.order.len()
     }
 
     pub fn is_empty(&self) -> bool {

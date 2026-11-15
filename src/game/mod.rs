@@ -213,7 +213,12 @@ fn short_hash(s: &str) -> u32 {
 }
 
 impl Game {
-    pub fn new(arena: Arc<ArenaDef>, mode: Arc<ModeDef>, format_name: &str, round: u64) -> Result<Self, String> {
+    pub fn new(
+        arena: Arc<ArenaDef>,
+        mode: Arc<ModeDef>,
+        format_name: &str,
+        round: u64,
+    ) -> Result<Self, String> {
         let format = mode
             .formats
             .get(format_name)
@@ -374,7 +379,12 @@ impl Game {
     // ── joining and leaving ─────────────────────────────────────────────────────
 
     /// Adds a party. Members are kept on one team when one has room.
-    pub fn add_players(&mut self, ctx: &Ctx, party: &[(String, String)], out: &mut Out) -> Result<(), JoinError> {
+    pub fn add_players(
+        &mut self,
+        ctx: &Ctx,
+        party: &[(String, String)],
+        out: &mut Out,
+    ) -> Result<(), JoinError> {
         if !self.phase.joinable() {
             return Err(JoinError::WrongState);
         }
@@ -426,7 +436,11 @@ impl Game {
             .teams
             .iter()
             .map(|t| {
-                let c = self.players.values().filter(|p| p.team.as_deref() == Some(&t.id)).count();
+                let c = self
+                    .players
+                    .values()
+                    .filter(|p| p.team.as_deref() == Some(&t.id))
+                    .count();
                 (t.id.clone(), c)
             })
             .collect();
@@ -438,7 +452,10 @@ impl Game {
         }
         let mut out = Vec::with_capacity(n);
         for _ in 0..n {
-            if let Some(i) = (0..counts.len()).filter(|&i| counts[i].1 < size).min_by_key(|&i| counts[i].1) {
+            if let Some(i) = (0..counts.len())
+                .filter(|&i| counts[i].1 < size)
+                .min_by_key(|&i| counts[i].1)
+            {
                 counts[i].1 += 1;
                 out.push(counts[i].0.clone());
             }
@@ -457,7 +474,11 @@ impl Game {
         if self.team(team).is_none() {
             return Err("unknown team");
         }
-        let count = self.players.values().filter(|p| p.team.as_deref() == Some(team)).count();
+        let count = self
+            .players
+            .values()
+            .filter(|p| p.team.as_deref() == Some(team))
+            .count();
         if count >= self.format.team_size as usize {
             return Err("full");
         }
@@ -479,16 +500,27 @@ impl Game {
         let during_round = matches!(self.phase, GamePhase::Running { .. }) && p.in_round();
         let was_in_round = !matches!(p.status, PlayerStatus::Waiting);
         if !quit {
-            out.push(Effect::ToLobby { player: uuid.into() });
+            out.push(Effect::ToLobby {
+                player: uuid.into(),
+            });
         }
-        out.push(Effect::SidebarClear { player: uuid.into() });
+        out.push(Effect::SidebarClear {
+            player: uuid.into(),
+        });
         out.push(Effect::Freeze {
             player: uuid.into(),
             frozen: false,
         });
         if was_in_round {
-            out.push(Effect::PvpLeave { player: uuid.into() });
-            if let Some(key) = p.team.as_deref().and_then(|t| self.team(t)).map(|t| t.key.clone()) {
+            out.push(Effect::PvpLeave {
+                player: uuid.into(),
+            });
+            if let Some(key) = p
+                .team
+                .as_deref()
+                .and_then(|t| self.team(t))
+                .map(|t| t.key.clone())
+            {
                 out.push(Effect::LeaveTeam {
                     world: self.arena.world.clone(),
                     key,
@@ -508,7 +540,11 @@ impl Game {
             during_round,
         });
         out.removed.push(uuid.into());
-        if matches!(self.phase, GamePhase::Running { .. } | GamePhase::Ending { .. }) && was_in_round {
+        if matches!(
+            self.phase,
+            GamePhase::Running { .. } | GamePhase::Ending { .. }
+        ) && was_in_round
+        {
             p.left = during_round;
             if during_round {
                 p.status = PlayerStatus::Spectating;
@@ -557,7 +593,9 @@ impl Game {
                 self.phase = GamePhase::Waiting;
                 let line = self.msg(ctx, &ctx.cfg.messages.countdown_cancelled, &[]);
                 out.chat(self.audience(), line);
-                out.event(Event::CountdownCancelled { game: self.id.clone() });
+                out.event(Event::CountdownCancelled {
+                    game: self.id.clone(),
+                });
             }
             GamePhase::Countdown { .. } => self.shorten_if_full(ctx),
             _ => {}
@@ -636,7 +674,11 @@ impl Game {
                 }
             }
         } else {
-            let used: HashSet<String> = self.players.values().filter_map(|p| p.team.clone()).collect();
+            let used: HashSet<String> = self
+                .players
+                .values()
+                .filter_map(|p| p.team.clone())
+                .collect();
             self.teams.retain(|t| used.contains(&t.id));
         }
         self.started_teams = self.teams.len();
@@ -663,7 +705,9 @@ impl Game {
                 None => (None, String::new()),
             };
             let kit = self.players.get(&u).and_then(|p| self.kit_for(p));
-            let Some(p) = self.players.get_mut(&u) else { continue };
+            let Some(p) = self.players.get_mut(&u) else {
+                continue;
+            };
             p.status = PlayerStatus::Alive;
             p.spawn = spawn;
             let name = p.name.clone();
@@ -679,7 +723,10 @@ impl Game {
                 clear_inventory: true,
             });
             if let Some(kit) = kit {
-                out.push(Effect::Kit { player: u.clone(), kit });
+                out.push(Effect::Kit {
+                    player: u.clone(),
+                    kit,
+                });
             }
             if freeze {
                 out.push(Effect::Freeze {
@@ -715,7 +762,9 @@ impl Game {
                 stock: 0,
             };
         }
-        self.phase = GamePhase::Running { started_at: ctx.now };
+        self.phase = GamePhase::Running {
+            started_at: ctx.now,
+        };
         self.unfrozen = !freeze;
         let title = self.plain(&ctx.cfg.messages.round_start_title, &[]);
         let sub = self.plain(&ctx.cfg.messages.round_start_subtitle, &[]);
@@ -745,11 +794,7 @@ impl Game {
                 }
             }
             GamePhase::Running { .. } => self.running_second(ctx, out),
-            GamePhase::Ending { ends_at, .. } => {
-                if ctx.now >= ends_at {
-                    self.begin_reset(out);
-                }
-            }
+            GamePhase::Ending { ends_at, .. } if ctx.now >= ends_at => self.begin_reset(out),
             _ => {}
         }
     }
@@ -758,7 +803,11 @@ impl Game {
         let elapsed = self.elapsed(ctx.now);
         if !self.unfrozen && elapsed >= self.rules.start_freeze {
             self.unfrozen = true;
-            for p in self.players.values().filter(|p| p.status == PlayerStatus::Alive) {
+            for p in self
+                .players
+                .values()
+                .filter(|p| p.status == PlayerStatus::Alive)
+            {
                 out.push(Effect::Freeze {
                     player: p.uuid.clone(),
                     frozen: false,
@@ -819,7 +868,12 @@ impl Game {
                         return;
                     }
                     TimeUp::MostAlive => {
-                        let best = self.teams_alive().iter().map(|(_, n)| *n).max().unwrap_or(0);
+                        let best = self
+                            .teams_alive()
+                            .iter()
+                            .map(|(_, n)| *n)
+                            .max()
+                            .unwrap_or(0);
                         let winners = if best == 0 {
                             Vec::new()
                         } else {
@@ -834,7 +888,9 @@ impl Game {
                     }
                     TimeUp::Event => {
                         self.time_up_sent = true;
-                        out.event(Event::TimeUp { game: self.id.clone() });
+                        out.event(Event::TimeUp {
+                            game: self.id.clone(),
+                        });
                     }
                 }
             }
@@ -877,12 +933,12 @@ impl Game {
                 self.end_round(ctx, Vec::new(), "schedule", out);
             }
             "broadcast" => {
-                let rest = action.splitn(2, ':').nth(1).unwrap_or("");
+                let rest = action.split_once(':').map_or("", |x| x.1);
                 let line = self.msg(ctx, rest, &[]);
                 out.chat(self.audience(), line);
             }
             "title" => {
-                let rest = action.splitn(2, ':').nth(1).unwrap_or("").to_string();
+                let rest = action.split_once(':').map_or("", |x| x.1).to_string();
                 out.title(self.audience(), rest, String::new(), 40);
             }
             _ => {}
@@ -942,12 +998,18 @@ impl Game {
         let respawns = self.rules.respawn && team_ok && player_ok;
 
         let victim_ref = self.players.get(uuid).map(GPlayer::reference);
-        let killer_ref = killer.as_deref().and_then(|k| self.players.get(k)).map(GPlayer::reference);
+        let killer_ref = killer
+            .as_deref()
+            .and_then(|k| self.players.get(k))
+            .map(GPlayer::reference);
         if let Some(k) = killer.as_deref() {
             if let Some(kp) = self.players.get_mut(k) {
                 kp.kills += 1;
             }
-            let victim_name = victim_ref.as_ref().map(|r| r.name.clone()).unwrap_or_default();
+            let victim_name = victim_ref
+                .as_ref()
+                .map(|r| r.name.clone())
+                .unwrap_or_default();
             if let Some(kp) = self.players.get(k) {
                 for cmd in &self.mode.rewards.kill {
                     out.push(Effect::Console {
@@ -961,7 +1023,11 @@ impl Game {
             let mut line = match killer.as_deref() {
                 Some(k) => {
                     let ks = self.display(k);
-                    self.msg(ctx, &ctx.cfg.messages.killed, &[("player", &shown), ("killer", &ks)])
+                    self.msg(
+                        ctx,
+                        &ctx.cfg.messages.killed,
+                        &[("player", &shown), ("killer", &ks)],
+                    )
                 }
                 None => self.msg(ctx, &ctx.cfg.messages.death, &[("player", &shown)]),
             };
@@ -1019,7 +1085,9 @@ impl Game {
             .get(uuid)
             .and_then(|p| self.kit_for(p))
             .filter(|_| self.rules.kit_on_respawn && !keep);
-        let Some(p) = self.players.get_mut(uuid) else { return };
+        let Some(p) = self.players.get_mut(uuid) else {
+            return;
+        };
         p.status = PlayerStatus::Alive;
         if spawn.is_some() {
             p.spawn = spawn;
@@ -1064,7 +1132,9 @@ impl Game {
     }
 
     fn eliminate_inner(&mut self, ctx: &Ctx, uuid: &str, announce: bool, out: &mut Out) {
-        let Some(p) = self.players.get_mut(uuid) else { return };
+        let Some(p) = self.players.get_mut(uuid) else {
+            return;
+        };
         p.status = PlayerStatus::Spectating;
         let r = p.reference();
         let shown = self.display(uuid);
@@ -1097,9 +1167,15 @@ impl Game {
         } else if let Some(p) = self.players.remove(uuid) {
             // Back to the lobby; the result still counts at round end.
             self.order.retain(|u| u != uuid);
-            out.push(Effect::ToLobby { player: uuid.into() });
-            out.push(Effect::SidebarClear { player: uuid.into() });
-            out.push(Effect::PvpLeave { player: uuid.into() });
+            out.push(Effect::ToLobby {
+                player: uuid.into(),
+            });
+            out.push(Effect::SidebarClear {
+                player: uuid.into(),
+            });
+            out.push(Effect::PvpLeave {
+                player: uuid.into(),
+            });
             out.removed.push(uuid.into());
             self.departed.push(p);
         }
@@ -1145,7 +1221,8 @@ impl Game {
                 }
                 if !solo && let Some(t) = self.team(&id) {
                     let shown = t.display();
-                    let line = self.msg(ctx, &ctx.cfg.messages.team_eliminated, &[("team", &shown)]);
+                    let line =
+                        self.msg(ctx, &ctx.cfg.messages.team_eliminated, &[("team", &shown)]);
                     out.chat(self.audience(), line);
                 }
                 out.event(Event::TeamEliminated {
@@ -1191,7 +1268,9 @@ impl Game {
         let mut s = text::fill(template, &values);
         // {counter:<key>}
         while let Some(start) = s.find("{counter:") {
-            let Some(end) = s[start..].find('}') else { break };
+            let Some(end) = s[start..].find('}') else {
+                break;
+            };
             let key = &s[start + 9..start + end];
             let v = p.counters.get(key).copied().unwrap_or(0).to_string();
             s.replace_range(start..start + end + 1, &v);
@@ -1200,17 +1279,29 @@ impl Game {
     }
 
     /// Ends the round. Empty `winners` is a draw. Only from Running.
-    pub fn end_round(&mut self, ctx: &Ctx, winners: Vec<String>, reason: &str, out: &mut Out) -> bool {
+    pub fn end_round(
+        &mut self,
+        ctx: &Ctx,
+        winners: Vec<String>,
+        reason: &str,
+        out: &mut Out,
+    ) -> bool {
         if !matches!(self.phase, GamePhase::Running { .. }) {
             return false;
         }
         let elapsed = self.elapsed(ctx.now);
-        let secs = self.mode.ending_seconds.unwrap_or(ctx.cfg.timing.ending_seconds);
+        let secs = self
+            .mode
+            .ending_seconds
+            .unwrap_or(ctx.cfg.timing.ending_seconds);
         self.phase = GamePhase::Ending {
             ends_at: ctx.now + u64::from(secs) * TICKS,
             elapsed,
         };
-        let winners: Vec<String> = winners.into_iter().filter(|w| self.team(w).is_some()).collect();
+        let winners: Vec<String> = winners
+            .into_iter()
+            .filter(|w| self.team(w).is_some())
+            .collect();
         self.winners = winners.clone();
         self.end_reason = reason.into();
         let draw = winners.is_empty();
@@ -1266,7 +1357,7 @@ impl Game {
             .order
             .iter()
             .cloned()
-            .partition(|u| self.players.get(u).is_some_and(|p| won(p)));
+            .partition(|u| self.players.get(u).is_some_and(&won));
         if draw {
             let t = self.plain(&ctx.cfg.messages.draw_title, &[]);
             out.title(self.audience(), t, String::new(), 60);
@@ -1304,7 +1395,9 @@ impl Game {
             world: self.arena.world.clone(),
             keys: self.teams.iter().map(|t| t.key.clone()).collect(),
         });
-        out.push(Effect::RemoveHolograms { game: self.id.clone() });
+        out.push(Effect::RemoveHolograms {
+            game: self.id.clone(),
+        });
         out.resets.push(self.id.clone());
     }
 
@@ -1326,7 +1419,13 @@ impl Game {
     // ── rules applied to the world ──────────────────────────────────────────────
 
     /// Decides a hit on `victim` (a player in this game). Records kill credit when allowed.
-    pub fn allow_damage(&mut self, victim: &str, attacker: Option<&str>, fall: bool, now: u64) -> bool {
+    pub fn allow_damage(
+        &mut self,
+        victim: &str,
+        attacker: Option<&str>,
+        fall: bool,
+        now: u64,
+    ) -> bool {
         if !matches!(self.phase, GamePhase::Running { .. }) || !self.unfrozen {
             return false;
         }
@@ -1375,7 +1474,11 @@ impl Game {
         if !matches!(self.phase, GamePhase::Running { .. }) {
             return false;
         }
-        if !self.players.get(uuid).is_some_and(|p| p.status == PlayerStatus::Alive) {
+        if !self
+            .players
+            .get(uuid)
+            .is_some_and(|p| p.status == PlayerStatus::Alive)
+        {
             return false;
         }
         if !self.arena.bounds().contains_block(pos) {
@@ -1389,7 +1492,10 @@ impl Game {
             .collect();
         match action {
             BlockAction::Place => {
-                let allowed = regions.iter().find_map(|r| r.build).unwrap_or(self.rules.build)
+                let allowed = regions
+                    .iter()
+                    .find_map(|r| r.build)
+                    .unwrap_or(self.rules.build)
                     && self.rules.max_build_y.is_none_or(|y| pos.y <= y);
                 if allowed {
                     self.placed.insert(pos);
@@ -1437,7 +1543,12 @@ impl Game {
     }
 
     /// Position scan: void, bounds, region enter/leave.
-    pub fn on_positions(&mut self, ctx: &Ctx, positions: &[(String, String, Location)], out: &mut Out) {
+    pub fn on_positions(
+        &mut self,
+        ctx: &Ctx,
+        positions: &[(String, String, Location)],
+        out: &mut Out,
+    ) {
         if !matches!(self.phase, GamePhase::Running { .. }) {
             return;
         }
@@ -1451,17 +1562,21 @@ impl Game {
             .map(|r| r.name.clone())
             .collect();
         for (uuid, world, loc) in positions {
-            let Some(p) = self.players.get(uuid) else { continue };
+            let Some(p) = self.players.get(uuid) else {
+                continue;
+            };
             match p.status {
                 PlayerStatus::Alive => {}
                 PlayerStatus::Respawning | PlayerStatus::Spectating => {
-                    if world != &self.arena.world || !bounds.contains_xz(loc) || loc.y < void_y - 32.0 {
-                        if let Some(s) = self.spectator_spot(uuid) {
-                            out.push(Effect::Teleport {
-                                player: uuid.clone(),
-                                to: self.arena_loc(s),
-                            });
-                        }
+                    if (world != &self.arena.world
+                        || !bounds.contains_xz(loc)
+                        || loc.y < void_y - 32.0)
+                        && let Some(s) = self.spectator_spot(uuid)
+                    {
+                        out.push(Effect::Teleport {
+                            player: uuid.clone(),
+                            to: self.arena_loc(s),
+                        });
                     }
                     continue;
                 }
@@ -1489,17 +1604,25 @@ impl Game {
                 }
             }
             let now_in = self.arena.regions_at(loc);
-            let Some(p) = self.players.get_mut(uuid) else { continue };
+            let Some(p) = self.players.get_mut(uuid) else {
+                continue;
+            };
             let before = std::mem::replace(&mut p.regions, now_in.clone());
             let r = p.reference();
-            for name in now_in.iter().filter(|n| !before.contains(n) && tracked.contains(*n)) {
+            for name in now_in
+                .iter()
+                .filter(|n| !before.contains(n) && tracked.contains(*n))
+            {
                 out.event(Event::RegionEntered {
                     game: self.id.clone(),
                     player: r.clone(),
                     region: name.clone(),
                 });
             }
-            for name in before.iter().filter(|n| !now_in.contains(n) && tracked.contains(*n)) {
+            for name in before
+                .iter()
+                .filter(|n| !now_in.contains(n) && tracked.contains(*n))
+            {
                 out.event(Event::RegionLeft {
                     game: self.id.clone(),
                     player: r.clone(),
@@ -1544,7 +1667,11 @@ impl Game {
     }
 
     /// Stockpiles that a nearby alive player can take: (spawner, player, item, count).
-    pub fn pickups(&self, positions: &[(String, String, Location)], radius: f64) -> Vec<(usize, String, String, u32)> {
+    pub fn pickups(
+        &self,
+        positions: &[(String, String, Location)],
+        radius: f64,
+    ) -> Vec<(usize, String, String, u32)> {
         if !matches!(self.phase, GamePhase::Running { .. }) {
             return Vec::new();
         }
@@ -1557,8 +1684,14 @@ impl Game {
             }
             let taker = positions.iter().find(|(u, w, l)| {
                 w == &self.arena.world
-                    && self.players.get(u).is_some_and(|p| p.status == PlayerStatus::Alive)
-                    && (l.x - def.at.x).powi(2) + (l.y - def.at.y).powi(2) + (l.z - def.at.z).powi(2) <= r2
+                    && self
+                        .players
+                        .get(u)
+                        .is_some_and(|p| p.status == PlayerStatus::Alive)
+                    && (l.x - def.at.x).powi(2)
+                        + (l.y - def.at.y).powi(2)
+                        + (l.z - def.at.z).powi(2)
+                        <= r2
             });
             if let Some((u, _, _)) = taker {
                 out.push((i, u.clone(), def.item.clone(), stock));
@@ -1588,7 +1721,10 @@ impl Game {
                 let rt = &self.spawners[i];
                 let stock = rt.stock.to_string();
                 let secs = rt.next_at.saturating_sub(now).div_ceil(TICKS).to_string();
-                let s = text::fill(&d.label, &[("stock", &stock), ("seconds", &secs), ("group", &d.group)]);
+                let s = text::fill(
+                    &d.label,
+                    &[("stock", &stock), ("seconds", &secs), ("group", &d.group)],
+                );
                 (i, self.fill_vars(&s, None))
             })
             .collect()
@@ -1603,7 +1739,9 @@ impl Game {
             if guard > 32 {
                 break;
             }
-            let Some(end) = s[start..].find('}') else { break };
+            let Some(end) = s[start..].find('}') else {
+                break;
+            };
             let key = s[start + 5..start + end].to_string();
             let v = player
                 .and_then(|u| self.players.get(u))

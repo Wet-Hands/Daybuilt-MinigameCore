@@ -12,11 +12,17 @@
 //! - `listeners/` Pumpkin event handlers
 //! - `commands/`  `/mg` and `/mga`
 
+mod commands;
 mod config;
 mod game;
+mod host;
+mod ipc;
+mod listeners;
 mod model;
+mod plugin;
 mod state;
 mod stats;
+mod ticker;
 
 /// Plugin id from Cargo.toml. Also the permission namespace (`<ID>:...`).
 pub const ID: &str = env!("CARGO_PKG_NAME");

@@ -5,8 +5,6 @@
 //! {round} {var:<key>} {counter:<key>}. A line that is exactly `{teams}`, `{winners}` or
 //! `{next_event}` expands to several lines (or none).
 
-use minigamecore_client::PlayerStatus;
-
 use super::{Game, GamePhase, TICKS};
 use crate::config::Config;
 use crate::model::text;
@@ -17,7 +15,11 @@ pub const MAX_LINES: usize = 15;
 pub fn render(game: &Game, cfg: &Config, now: u64, uuid: &str) -> (String, Vec<String>) {
     let (title, templates) = match &game.mode.sidebar {
         Some(sb) => (
-            if sb.title.is_empty() { cfg.sidebar.title.clone() } else { sb.title.clone() },
+            if sb.title.is_empty() {
+                cfg.sidebar.title.clone()
+            } else {
+                sb.title.clone()
+            },
             match game.phase {
                 GamePhase::Waiting | GamePhase::Countdown { .. } => &sb.waiting,
                 GamePhase::Running { .. } => &sb.running,
@@ -43,18 +45,29 @@ pub fn render(game: &Game, cfg: &Config, now: u64, uuid: &str) -> (String, Vec<S
                 if game.winners.is_empty() {
                     lines.push("&eDraw".to_string());
                 } else {
-                    lines.extend(game.winners.iter().filter_map(|w| game.team(w)).map(|t| format!(" {}", t.display())));
+                    lines.extend(
+                        game.winners
+                            .iter()
+                            .filter_map(|w| game.team(w))
+                            .map(|t| format!(" {}", t.display())),
+                    );
                 }
             }
             "{next_event}" => {
                 if let Some((label, secs)) = game.next_event(now) {
                     lines.push(format!("{label} &7in &a{}", text::clock(secs)));
-                } else if game.rules.time_limit > 0 && matches!(game.phase, GamePhase::Running { .. }) {
+                } else if game.rules.time_limit > 0
+                    && matches!(game.phase, GamePhase::Running { .. })
+                {
                     let left = game.rules.time_limit.saturating_sub(game.elapsed(now));
                     lines.push(format!("&fEnds in &a{}", text::clock(left)));
                 }
             }
-            _ => lines.push(fill_counters(game, &game.fill_vars(&text::fill(t, &pairs), Some(uuid)), uuid)),
+            _ => lines.push(fill_counters(
+                game,
+                &game.fill_vars(&text::fill(t, &pairs), Some(uuid)),
+                uuid,
+            )),
         }
         if lines.len() >= MAX_LINES {
             lines.truncate(MAX_LINES);
@@ -72,7 +85,10 @@ fn values(game: &Game, cfg: &Config, now: u64, uuid: &str) -> Vec<(&'static str,
         _ => 0,
     };
     let status = match game.phase {
-        GamePhase::Countdown { .. } => text::fill(&cfg.messages.countdown_status, &[("seconds", &seconds.to_string())]),
+        GamePhase::Countdown { .. } => text::fill(
+            &cfg.messages.countdown_status,
+            &[("seconds", &seconds.to_string())],
+        ),
         _ => cfg.messages.waiting_status.clone(),
     };
     let elapsed = game.elapsed(now);
@@ -105,7 +121,10 @@ fn values(game: &Game, cfg: &Config, now: u64, uuid: &str) -> Vec<(&'static str,
         ("kills", p.map(|p| p.kills).unwrap_or(0).to_string()),
         ("deaths", p.map(|p| p.deaths).unwrap_or(0).to_string()),
         ("team", team),
-        ("kit", p.and_then(|p| p.kit.clone()).unwrap_or_else(|| "-".into())),
+        (
+            "kit",
+            p.and_then(|p| p.kit.clone()).unwrap_or_else(|| "-".into()),
+        ),
         ("round", game.round.to_string()),
     ]
 }
@@ -118,7 +137,9 @@ fn fill_counters(game: &Game, s: &str, uuid: &str) -> String {
         if guard > 16 {
             break;
         }
-        let Some(end) = s[start..].find('}') else { break };
+        let Some(end) = s[start..].find('}') else {
+            break;
+        };
         let key = &s[start + 9..start + end];
         let v = game
             .players
@@ -149,15 +170,12 @@ fn team_lines(game: &Game, uuid: &str) -> Vec<String> {
             } else {
                 "&a✔".to_string()
             };
-            let you = if mine.as_deref() == Some(&t.id) { " &7(you)" } else { "" };
+            let you = if mine.as_deref() == Some(&t.id) {
+                " &7(you)"
+            } else {
+                ""
+            };
             format!("{}■ &f{} {state}{you}", text::color_code(&t.color), t.name)
         })
         .collect()
-}
-
-/// True if the player should see a game sidebar (anyone in a game who is not gone).
-pub fn wants_sidebar(game: &Game, uuid: &str) -> bool {
-    game.players
-        .get(uuid)
-        .is_some_and(|p| !matches!(p.status, PlayerStatus::Spectating) || matches!(game.phase, GamePhase::Running { .. } | GamePhase::Ending { .. }))
 }

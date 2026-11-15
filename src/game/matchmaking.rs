@@ -43,6 +43,7 @@ pub fn choose(
     format: Option<&str>,
     arena: Option<&str>,
     party: usize,
+    busy: &std::collections::HashSet<String>,
 ) -> Option<Choice> {
     let format_ok = |f: &str| format.is_none_or(|want| want == f);
     let arena_ok = |a: &str| arena.is_none_or(|want| want == a);
@@ -62,14 +63,21 @@ pub fn choose(
         return Some(Choice::Existing(g.id.clone()));
     }
 
-    let mut formats: Vec<&FormatDef> = mode.formats.values().filter(|f| format_ok(&f.name)).collect();
+    let mut formats: Vec<&FormatDef> = mode
+        .formats
+        .values()
+        .filter(|f| format_ok(&f.name))
+        .collect();
     formats.sort_by_key(|f| f.name != mode.default_format);
     for f in formats {
         if party > f.max_players() as usize {
             continue;
         }
         let free = arenas.values().find(|a| {
-            arena_ok(&a.id) && !games.contains_key(&a.id) && arena_fits(a, mode, f)
+            arena_ok(&a.id)
+                && !games.contains_key(&a.id)
+                && !busy.contains(&a.id)
+                && arena_fits(a, mode, f)
         });
         if let Some(a) = free {
             return Some(Choice::New {

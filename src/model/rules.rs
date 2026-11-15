@@ -170,7 +170,9 @@ impl Rules {
         for layer in layers {
             crate::model::toml_util::merge(&mut table, (*layer).clone());
         }
-        let rules: Rules = table.try_into().map_err(|e: toml::de::Error| e.to_string())?;
+        let rules: Rules = table
+            .try_into()
+            .map_err(|e: toml::de::Error| e.to_string())?;
         rules.validate()?;
         Ok(rules)
     }
@@ -262,7 +264,7 @@ mod tests {
         assert_eq!(rules.break_rule, BreakRule::None);
         assert!(rules.set("nope", serde_json::json!(1)).is_err());
         assert!(rules.set("pvp", serde_json::json!("yes")).is_err());
-        assert!(rules.pvp == false);
+        assert!(!rules.pvp);
         let bad: toml::Table = toml::from_str("typo_rule = 1").unwrap();
         assert!(Rules::from_layers(&[&bad]).is_err());
     }

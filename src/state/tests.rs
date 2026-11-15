@@ -19,19 +19,31 @@ fn matchmaking_join_events_and_index() {
     assert!(!effects.is_empty());
     assert_eq!(s.index.get("u1"), Some(&"castle".to_string()));
     // Already in a game.
-    let err = s.join(vec![("u1".into(), "Steve".into())], "bedwars", None, None).unwrap_err();
+    let err = s
+        .join(vec![("u1".into(), "Steve".into())], "bedwars", None, None)
+        .unwrap_err();
     assert_eq!(err.kind, ErrorKind::AlreadyInGame);
     // A second player goes to the same game (default format "duo").
-    s.join(vec![("u2".into(), "Alex".into())], "bedwars", None, None).unwrap();
+    s.join(vec![("u2".into(), "Alex".into())], "bedwars", None, None)
+        .unwrap();
     // The arena is taken by the duo game, so ffa finds nothing.
     let err = s
-        .join(vec![("u3".into(), "Bob".into())], "bedwars", Some("ffa"), None)
+        .join(
+            vec![("u3".into(), "Bob".into())],
+            "bedwars",
+            Some("ffa"),
+            None,
+        )
         .unwrap_err();
     assert_eq!(err.kind, ErrorKind::NoArena);
     let (events, dropped) = s.poll("bedwars_plugin", 100);
     assert_eq!(dropped, 0);
     assert!(matches!(events[0].event, Event::GameCreated { .. }));
-    assert!(events.iter().any(|e| matches!(e.event, Event::CountdownStarted { .. })));
+    assert!(
+        events
+            .iter()
+            .any(|e| matches!(e.event, Event::CountdownStarted { .. }))
+    );
     // Seq numbers increase.
     assert!(events.windows(2).all(|w| w[0].seq < w[1].seq));
 }
@@ -39,12 +51,16 @@ fn matchmaking_join_events_and_index() {
 #[test]
 fn leaving_an_unstarted_game_frees_the_arena() {
     let mut s = state();
-    s.join(vec![("u1".into(), "Steve".into())], "bedwars", None, None).unwrap();
+    s.join(vec![("u1".into(), "Steve".into())], "bedwars", None, None)
+        .unwrap();
     s.leave("u1", true);
     assert!(s.games.is_empty());
     assert!(s.index.is_empty());
     let (events, _) = s.poll("bedwars_plugin", 100);
-    assert!(matches!(events.last().unwrap().event, Event::GameReset { .. }));
+    assert!(matches!(
+        events.last().unwrap().event,
+        Event::GameReset { .. }
+    ));
 }
 
 #[test]
@@ -61,7 +77,10 @@ fn full_round_through_ticks_and_restore() {
         s.tick();
     }
     assert!(matches!(s.games["castle"].phase, GamePhase::Running { .. }));
-    assert_eq!(s.game_at(Some("world"), BlockPos::new(0, 64, 0)), Some("castle".into()));
+    assert_eq!(
+        s.game_at(Some("world"), BlockPos::new(0, 64, 0)),
+        Some("castle".into())
+    );
     assert!(s.record_block("castle", BlockPos::new(0, 64, 0), 1));
     assert!(!s.record_block("castle", BlockPos::new(0, 64, 0), 2));
     let effects = s.death("u1", "void").unwrap();
@@ -83,7 +102,12 @@ fn full_round_through_ticks_and_restore() {
 fn queue_drops_oldest_when_full() {
     let mut s = state();
     for i in 0..(QUEUE_CAP + 5) {
-        s.push_event("bedwars", Event::TimeUp { game: i.to_string() });
+        s.push_event(
+            "bedwars",
+            Event::TimeUp {
+                game: i.to_string(),
+            },
+        );
     }
     let (events, dropped) = s.poll("bedwars_plugin", 10);
     assert_eq!(dropped, 5);

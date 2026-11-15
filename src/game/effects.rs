@@ -103,6 +103,15 @@ pub enum Effect {
         item: String,
         count: u32,
     },
+    /// Put blocks back without recording them (explosion damage that was not allowed).
+    PutBlocks {
+        world: String,
+        blocks: Vec<(BlockPos, u16)>,
+    },
+    /// Queue a player for the configured `lobby.auto_join` mode.
+    AutoJoin {
+        player: String,
+    },
     /// Remove a game's spawner labels (holograms).
     RemoveHolograms {
         game: String,
@@ -145,7 +154,13 @@ impl Out {
         }
     }
 
-    pub fn title(&mut self, players: Vec<String>, title: String, subtitle: String, stay_ticks: i32) {
+    pub fn title(
+        &mut self,
+        players: Vec<String>,
+        title: String,
+        subtitle: String,
+        stay_ticks: i32,
+    ) {
         if !players.is_empty() && (!title.is_empty() || !subtitle.is_empty()) {
             self.effects.push(Effect::Title {
                 players,
@@ -164,14 +179,6 @@ impl Out {
                 pitch,
             });
         }
-    }
-
-    pub fn merge(&mut self, other: Out) {
-        self.effects.extend(other.effects);
-        self.events.extend(other.events);
-        self.results.extend(other.results);
-        self.resets.extend(other.resets);
-        self.removed.extend(other.removed);
     }
 }
 

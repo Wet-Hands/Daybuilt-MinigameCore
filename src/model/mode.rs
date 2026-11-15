@@ -166,7 +166,9 @@ impl ModeDef {
         for (name, f) in file.formats {
             ids::name(&name, "format name")?;
             if f.teams == 0 || f.team_size == 0 {
-                return Err(format!("format '{name}': teams and team_size must be at least 1"));
+                return Err(format!(
+                    "format '{name}': teams and team_size must be at least 1"
+                ));
             }
             let rules = Rules::from_layers(&[&file.rules, &f.rules])
                 .map_err(|e| format!("format '{name}' rules: {e}"))?;
@@ -174,7 +176,11 @@ impl ModeDef {
                 display_name: f.display_name.unwrap_or_else(|| name.clone()),
                 name: name.clone(),
                 team_mode: f.team_mode,
-                team_size: if f.team_mode == TeamMode::Solo { 1 } else { f.team_size },
+                team_size: if f.team_mode == TeamMode::Solo {
+                    1
+                } else {
+                    f.team_size
+                },
                 teams: f.teams,
                 min_players: f.min_players.max(1),
                 team_choice: f.team_choice && f.team_mode == TeamMode::Teams,

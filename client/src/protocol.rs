@@ -103,7 +103,9 @@ pub enum Request {
     Ping,
     /// Claims a mode id for the calling plugin. Events of games in this mode are queued
     /// for it and returned by `poll`. Re-registering by the same plugin is fine.
-    RegisterMode { mode: String },
+    RegisterMode {
+        mode: String,
+    },
     /// Returns and removes up to `max` queued events (default 256) for the calling plugin.
     Poll {
         #[serde(default)]
@@ -115,11 +117,17 @@ pub enum Request {
         mode: Option<String>,
     },
     /// One game.
-    Game { game: String },
+    Game {
+        game: String,
+    },
     /// Which game a player is in, if any.
-    Player { player: String },
+    Player {
+        player: String,
+    },
     /// An arena definition (spawns, regions, points, values).
-    Arena { arena: String },
+    Arena {
+        arena: String,
+    },
     /// Arena ids, optionally only those that can host `mode`.
     ListArenas {
         #[serde(default)]
@@ -136,9 +144,13 @@ pub enum Request {
         arena: Option<String>,
     },
     /// Removes a player from their game (counts as a loss mid-round).
-    Leave { player: String },
+    Leave {
+        player: String,
+    },
     /// Starts the countdown's end now, if there are enough players.
-    Start { game: String },
+    Start {
+        game: String,
+    },
     /// Ends the round. Empty `winners` is a draw.
     EndRound {
         game: String,
@@ -148,7 +160,9 @@ pub enum Request {
         reason: Option<String>,
     },
     /// Eliminates a player (no respawn).
-    Eliminate { player: String },
+    Eliminate {
+        player: String,
+    },
     /// Allows or forbids respawning for a whole team or one player.
     SetRespawn {
         game: String,
@@ -184,7 +198,10 @@ pub enum Request {
         #[serde(default)]
         label: Option<String>,
     },
-    CancelSchedule { game: String, id: String },
+    CancelSchedule {
+        game: String,
+        id: String,
+    },
     /// Sets a sidebar variable (`{var:<key>}` in sidebar lines). With `player`, only that
     /// player's sidebar sees it. `None` value removes it.
     SetVar {
@@ -228,13 +245,25 @@ pub enum Request {
         kind: MessageKind,
     },
     /// Applies a kit to a player now.
-    GiveKit { player: String, kit: String },
+    GiveKit {
+        player: String,
+        kit: String,
+    },
     /// Selects the kit a player gets at round start (and on respawn).
-    SelectKit { player: String, kit: String },
+    SelectKit {
+        player: String,
+        kit: String,
+    },
     /// Whether two players are on the same team of the same game. [`Reply::Bool`].
-    SameTeam { a: String, b: String },
+    SameTeam {
+        a: String,
+        b: String,
+    },
     /// Names of the arena regions containing `pos`. [`Reply::Regions`].
-    RegionsAt { game: String, pos: Location },
+    RegionsAt {
+        game: String,
+        pos: Location,
+    },
 }
 
 /// Successful results.
@@ -625,7 +654,10 @@ mod tests {
             },
         };
         let text = serde_json::to_string(&env).unwrap();
-        assert_eq!(text, r#"{"seq":3,"type":"timer","game":"a1","id":"diamond_2"}"#);
+        assert_eq!(
+            text,
+            r#"{"seq":3,"type":"timer","game":"a1","id":"diamond_2"}"#
+        );
         let unknown: EventEnvelope =
             serde_json::from_str(r#"{"seq":4,"type":"from_the_future","game":"x"}"#).unwrap();
         assert_eq!(unknown.event, Event::Unknown);

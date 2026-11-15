@@ -20,7 +20,7 @@ pub fn mode(id: &str) -> Result<(), String> {
 }
 
 /// Words that placeholder names use after the namespace, so no mode may take them.
-pub const RESERVED_MODES: &[&str] = &["game", "stat", "all"];
+pub const RESERVED_MODES: &[&str] = &["game", "stat", "all", "playing", "waiting", "games"];
 
 /// Format, team, kit, region, group and point ids: `[a-z0-9_]`, 1–24 characters.
 pub fn name(id: &str, what: &str) -> Result<(), String> {

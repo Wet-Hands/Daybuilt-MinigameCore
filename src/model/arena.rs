@@ -228,7 +228,11 @@ impl ArenaDef {
 
     pub fn allows_format(&self, mode: &str, format: &str) -> bool {
         self.allows_mode(mode)
-            && (self.formats.is_empty() || self.formats.iter().any(|f| f == &format!("{mode}:{format}")))
+            && (self.formats.is_empty()
+                || self
+                    .formats
+                    .iter()
+                    .any(|f| f == &format!("{mode}:{format}")))
     }
 
     /// Names of the regions containing `l`.

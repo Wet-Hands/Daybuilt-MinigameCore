@@ -35,16 +35,6 @@ impl WorldLoc {
             pitch: loc.pitch,
         }
     }
-
-    pub fn loc(&self) -> Location {
-        Location {
-            x: self.x,
-            y: self.y,
-            z: self.z,
-            yaw: self.yaw,
-            pitch: self.pitch,
-        }
-    }
 }
 
 /// An axis-aligned box of whole blocks, inclusive on both corners.

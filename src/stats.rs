@@ -59,7 +59,12 @@ impl Stats {
             return 0;
         };
         match mode {
-            Some(m) => p.modes.get(m).and_then(|s| s.get(key)).copied().unwrap_or(0),
+            Some(m) => p
+                .modes
+                .get(m)
+                .and_then(|s| s.get(key))
+                .copied()
+                .unwrap_or(0),
             None => {
                 let values = p.modes.values().filter_map(|s| s.get(key).copied());
                 if key.starts_with("best_") || key == "win_streak" {

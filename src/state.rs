@@ -56,6 +56,8 @@ pub struct State {
     seq: u64,
     /// Effects requested from IPC handlers, applied by the next tick.
     pub deferred: Vec<Effect>,
+    /// Effects to apply at a later tick: (due tick, effects).
+    pub later: Vec<(u64, Vec<Effect>)>,
     pub restores: VecDeque<Restore>,
     pub stats: Stats,
     pub stats_dirty: bool,
@@ -64,6 +66,8 @@ pub struct State {
     pub uuid_names: HashMap<String, String>,
     /// entity id → player uuid.
     pub entities: HashMap<i32, String>,
+    /// uuid → last damage type (snake_case), for death causes.
+    pub causes: HashMap<String, String>,
     /// projectile entity id → (shooter entity id, tick).
     pub projectiles: HashMap<i32, (i32, u64)>,
     /// Data folder works.
@@ -87,12 +91,14 @@ impl State {
             queues: BTreeMap::new(),
             seq: 0,
             deferred: Vec::new(),
+            later: Vec::new(),
             restores: VecDeque::new(),
             stats: Stats::default(),
             stats_dirty: false,
             names: HashMap::new(),
             uuid_names: HashMap::new(),
             entities: HashMap::new(),
+            causes: HashMap::new(),
             projectiles: HashMap::new(),
             persist: false,
             pie_dirty: true,
@@ -121,12 +127,16 @@ impl State {
             self.names.remove(&name.to_ascii_lowercase());
         }
         self.entities.retain(|_, u| u != uuid);
+        self.causes.remove(uuid);
     }
 
     /// A name or uuid → (uuid, name) for an online player.
     pub fn resolve(&self, who: &str) -> Option<(String, String)> {
         if let Some(u) = self.names.get(&who.to_ascii_lowercase()) {
-            return Some((u.clone(), self.uuid_names.get(u).cloned().unwrap_or_default()));
+            return Some((
+                u.clone(),
+                self.uuid_names.get(u).cloned().unwrap_or_default(),
+            ));
         }
         let lower = who.to_ascii_lowercase();
         self.uuid_names.get(&lower).map(|n| (lower, n.clone()))
@@ -153,7 +163,10 @@ impl State {
             q.events.pop_front();
             q.dropped += 1;
         }
-        q.events.push_back(EventEnvelope { seq: self.seq, event });
+        q.events.push_back(EventEnvelope {
+            seq: self.seq,
+            event,
+        });
     }
 
     /// Routes an `Out` from a game step: events to queues, results to stats, index
@@ -183,7 +196,9 @@ impl State {
     }
 
     fn start_restore(&mut self, game: &str) {
-        let Some(g) = self.games.get_mut(game) else { return };
+        let Some(g) = self.games.get_mut(game) else {
+            return;
+        };
         let changes = std::mem::take(&mut g.changes);
         let mut cleanup = self.cfg.reset.cleanup_entities.clone();
         cleanup.extend(g.mode.cleanup_entities.iter().cloned());
@@ -239,27 +254,50 @@ impl State {
             return Err(err(ErrorKind::BadRequest, "no players".into()));
         }
         let Some(mode_def) = self.modes.get(mode).cloned() else {
-            return Err(err(ErrorKind::UnknownMode, format!("unknown mode '{mode}'")));
+            return Err(err(
+                ErrorKind::UnknownMode,
+                format!("unknown mode '{mode}'"),
+            ));
         };
         if let Some(f) = format
             && !mode_def.formats.contains_key(f)
         {
-            return Err(err(ErrorKind::BadRequest, format!("mode '{mode}' has no format '{f}'")));
+            return Err(err(
+                ErrorKind::BadRequest,
+                format!("mode '{mode}' has no format '{f}'"),
+            ));
         }
         for (u, name) in &party {
             if self.index.contains_key(u) {
-                return Err(err(ErrorKind::AlreadyInGame, format!("{name} is already in a game")));
+                return Err(err(
+                    ErrorKind::AlreadyInGame,
+                    format!("{name} is already in a game"),
+                ));
             }
         }
-        let choice = matchmaking::choose(&self.games, &self.arenas, &mode_def, format, arena, party.len())
-            .ok_or_else(|| err(ErrorKind::NoArena, format!("no arena is free for {mode}")))?;
+        let busy: std::collections::HashSet<String> =
+            self.restores.iter().map(|r| r.game.clone()).collect();
+        let choice = matchmaking::choose(
+            &self.games,
+            &self.arenas,
+            &mode_def,
+            format,
+            arena,
+            party.len(),
+            &busy,
+        )
+        .ok_or_else(|| err(ErrorKind::NoArena, format!("no arena is free for {mode}")))?;
         let (now, cfg) = self.ctx();
         let ctx = Ctx { now, cfg: &cfg };
         let mut out = Out::default();
         let id = match choice {
             Choice::Existing(id) => id,
             Choice::New { arena, format } => {
-                let def = self.arenas.get(&arena).cloned().ok_or_else(|| err(ErrorKind::UnknownArena, arena.clone()))?;
+                let def = self
+                    .arenas
+                    .get(&arena)
+                    .cloned()
+                    .ok_or_else(|| err(ErrorKind::UnknownArena, arena.clone()))?;
                 self.rounds += 1;
                 let game = Game::new(def, Arc::clone(&mode_def), &format, self.rounds)
                     .map_err(|m| err(ErrorKind::NoArena, m))?;
@@ -272,11 +310,14 @@ impl State {
                 arena
             }
         };
-        let game = self.games.get_mut(&id).ok_or_else(|| err(ErrorKind::UnknownGame, id.clone()))?;
+        let game = self
+            .games
+            .get_mut(&id)
+            .ok_or_else(|| err(ErrorKind::UnknownGame, id.clone()))?;
         if let Err(e) = game.add_players(&ctx, &party, &mut out) {
-            let effects = self.finish(mode, out);
+            // Matchmaking checked room and phase, so this is not expected; drop a new empty game.
+            self.finish(mode, out);
             self.drop_empty_waiting();
-            let _ = effects;
             return Err(err(ErrorKind::WrongState, format!("{e:?}")));
         }
         for (u, _) in &party {
@@ -303,7 +344,11 @@ impl State {
     }
 
     /// Runs `f` on a game and routes its output.
-    pub fn step<R>(&mut self, game: &str, f: impl FnOnce(&mut Game, &Ctx, &mut Out) -> R) -> Option<(R, Vec<Effect>)> {
+    pub fn step<R>(
+        &mut self,
+        game: &str,
+        f: impl FnOnce(&mut Game, &Ctx, &mut Out) -> R,
+    ) -> Option<(R, Vec<Effect>)> {
         let (now, cfg) = self.ctx();
         let ctx = Ctx { now, cfg: &cfg };
         let g = self.games.get_mut(game)?;
@@ -321,6 +366,15 @@ impl State {
         let stockpile = self.cfg.spawners.mode == crate::config::SpawnerMode::Stockpile;
         let ids: Vec<String> = self.games.keys().cloned().collect();
         let mut effects = std::mem::take(&mut self.deferred);
+        if !self.later.is_empty() {
+            let (due, keep): (Vec<_>, Vec<_>) = std::mem::take(&mut self.later)
+                .into_iter()
+                .partition(|(at, _)| *at <= now);
+            self.later = keep;
+            for (_, e) in due {
+                effects.extend(e);
+            }
+        }
         let second = now.is_multiple_of(crate::game::TICKS);
         for id in ids {
             if let Some((_, e)) = self.step(&id, |g, ctx, out| {
@@ -333,9 +387,18 @@ impl State {
             }
         }
         if now.is_multiple_of(200) {
-            self.projectiles.retain(|_, (_, at)| now.saturating_sub(*at) < 1200);
+            self.projectiles
+                .retain(|_, (_, at)| now.saturating_sub(*at) < 1200);
         }
         effects
+    }
+
+    /// Queues effects to run `ticks` from now (instead of the API's delayed tasks,
+    /// which are never freed).
+    pub fn after(&mut self, ticks: u64, effects: Vec<Effect>) {
+        if !effects.is_empty() {
+            self.later.push((self.now + ticks.max(1), effects));
+        }
     }
 
     /// A player died for real or fell into the void. Returns effects if the core
