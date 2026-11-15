@@ -1,0 +1,30 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Plugin identity. `name`, `version`, `authors` and `description` are read by
+# `src/lib.rs` (via env!("CARGO_PKG_*")) — this is the ONLY place to set them.
+# `name` becomes the plugin id, permission namespace and `<name>.wasm`.
+# Use snake_case (no hyphens) so the namespace and filename match exactly.
+# ─────────────────────────────────────────────────────────────────────────────
+[package]
+name = "my_plugin"
+version = "0.1.0"
+edition = "2024"
+authors = ["Your Name"]
+description = "A PumpkinMC server plugin."
+license = "MIT"
+publish = false
+
+[lib]
+crate-type = ["cdylib"] # produces a WebAssembly component
+
+[dependencies]
+pumpkin-plugin-api = "0.2.1"
+tracing = { version = "0.1", default-features = false }
+
+# Small, fast .wasm output for uploading.
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
+strip = true
+debug = false
+panic = "abort"

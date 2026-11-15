@@ -1,0 +1,8 @@
+# Every `cargo build` / `cargo check` / `cargo clippy` targets WASI preview 2,
+# which emits a WebAssembly *component* — the format Pumpkin loads.
+[build]
+target = "wasm32-wasip2"
+
+[alias]
+# `cargo dist` → optimized build; then run scripts/build.sh to copy to dist/.
+dist = "build --release"
