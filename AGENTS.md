@@ -1,5 +1,11 @@
 # AGENTS.md - PumpkinMC plugin (Rust → WebAssembly component)
 
+This repo is **Daybuilt MinigameCore** (`daybuilt_minigamecore`): arenas, teams, matchmaking, round
+lifecycle, kits, spawners, sidebar, stats and map reset for round-based minigames. Mode plugins
+(Bedwars, Duels, Spleef, ...) are separate plugins that talk to it through `client/`
+(`minigamecore-client`). User-facing docs: README.md. Sections below about RustedVault and PvP
+Manager describe *other* Daybuilt plugins this one integrates with.
+
 ## Build / verify (run after every change)
 - `cargo check` — fast type check (target wasm32-wasip2 is preset in .cargo/config.toml).
 - `cargo clippy -- -D warnings` and `cargo fmt` — must be clean (CI enforces).
@@ -71,15 +77,16 @@
 
 ## PumpkinPIE placeholders (optional integration)
 [PumpkinPIE](https://github.com/Rennex07/PumpkinPIE) is a PlaceholderAPI-style provider plugin. This plugin
-supplies an "expansion" for it: `src/placeholders.rs` (protocol + registration) and `src/names.rs`
-(name → uuid index). Protocol reference: `docs/protocol.md` and `docs/expansions.md` in that repo.
+supplies an "expansion" for it in `src/host/pie.rs` (registration from the ticker, `handle` for
+`on_request`, pure `resolve`). Name → uuid comes from `State::resolve` (online) or
+`Stats::uuid_by_name` (offline). Protocol reference: `docs/protocol.md` and `docs/expansions.md` in that repo.
 
 ### Adding a placeholder
-1. Add the name to `advertised()` in `src/placeholders.rs` (advertised in `/pie`; not a filter).
-2. Add a `match` arm in `resolve()`. `name` arrives **lowercased**; return `None` to decline (the
-   placeholder is then left in the text).
-3. Display texts go in `[placeholders]` in `config/config.toml` + the `Placeholders` struct in `config.rs`.
-4. List it in the `config.toml` comment block and the README table.
+1. Add the name to `ADVERTISED` in `src/host/pie.rs` (advertised in `/pie`; not a filter).
+2. Add a branch in `resolve()` / `game_field()`. `name` arrives **lowercased**; return `None` to decline.
+   Words used right after the namespace (`game`, `playing`, ...) must also be in
+   `model::ids::RESERVED_MODES` so no mode id can collide with them.
+3. Add a test in `pie.rs` and list it in the README table.
 
 ### Rules (each one breaks something if ignored)
 - **Wire format:** UTF-8 JSON over `pumpkin_plugin_api::ipc::send_ipc_message("PumpkinPIE", bytes)`.
@@ -97,13 +104,13 @@ supplies an "expansion" for it: `src/placeholders.rs` (protocol + registration) 
   No `Server`/`Player` is available, and `viewer` is a player **name** (resolve via `names::uuid_for`).
 - **Message PIE as rarely as possible.** Pumpkin runs each plugin's calls one at a time. If we message PIE
   while PIE is waiting on our `on_request`, both block forever. So: register at startup (until it
-  succeeds), on a config change, and on `/eco reload`. No periodic refresh. Never call PIE from an
-  event or command handler directly; set state (`placeholders::reregister()`) and let the ticker send it.
-- **PIE forgets expansions when it reloads**, and there is no push from it. `/eco reload` re-registers.
-- **Sender check:** `handle_ipc_message` routes messages whose sender is `"PumpkinPIE"` to
-  `placeholders::handle`; everything else is the plain-text API in `ipc.rs`. Keep those two separate.
+  succeeds), on a config change, and on `/mga reload`. No periodic refresh. Never call PIE from an
+  event or command handler directly; set `State::pie_dirty = true` and let the ticker send it.
+- **PIE forgets expansions when it reloads**, and there is no push from it. `/mga reload` re-registers.
+- **Sender check:** `handle_ipc_message` (`src/plugin.rs`) routes messages whose sender is `"PumpkinPIE"` to
+  `host::pie::handle`; everything else is the mode-plugin JSON protocol in `ipc.rs`. Keep those two separate.
 - **Namespace:** lowercase letters/digits, starts with a letter, **no `_`** (namespace = text before
-  the first `_`), not `player`/`server`/`pie`. Validated in `config.rs`. Placeholder names may contain `_`;
+  the first `_`), not `player`/`server`/`pie`. Validated in `Config::validate`. Placeholder names may contain `_`;
   ids may not contain `-` or `.`. If two plugins use the same namespace, the last one to load wins with no warning.
 - **Caching:** `cache_ms` → `{"kind":"ttl","ms":N}` (PIE clamps to 60 s), `0` → `{"kind":"never"}`.
   Values change in real time (combat timer), so keep the default TTL short.
@@ -144,7 +151,9 @@ seen on a live server. Keep that distinction when you add to this list.
 - **Persistence that survives crashes.** Append each change to a JSON-lines log *before* changing memory
   (fail the operation if the append fails), record the resulting value (so replay is idempotent), and
   rewrite a snapshot periodically via temp file + rename. On start, replay log entries newer than the
-  snapshot's sequence number. Terminate a torn last line before the next append. See `src/storage/`.
+  snapshot's sequence number. Terminate a torn last line before the next append. (RustedVault does this
+  for money. Here the same idea is `host/crashlog.rs`: originals of changed arena blocks are appended
+  to `resets/<arena>.jsonl` and replayed on start if a round never finished; a torn last line is skipped.)
 - **Config with defaults.** `toml = { version = "0.9", default-features = false, features = ["parse", "serde"] }`
   builds for wasm32-wasip2. Parse the user file and the embedded default as `toml::Table`, deep-merge
   user over default, then deserialize: owners can delete keys and new keys get defaults automatically.
@@ -222,31 +231,42 @@ impl EventHandler<PlayerJoinEvent> for MyListener {
 ### Persistent data
 Add `permissions::FS_READ_DATA` / `FS_WRITE_DATA` to metadata, then `std::fs` under `context.get_data_folder()`.
 
-Data folder (`plugins/data/rustedvault/`): `config.toml`, `accounts.json` (snapshot), `ledger.jsonl`
-(every change: seq, time, op, player, currency, amount, balance after, reason, source).
+Data folder (`plugins/data/daybuilt_minigamecore/`): `config.toml`, `lobby.toml` (from `/mga setlobby`,
+overrides `[lobby] spawn` so the commented config is never rewritten), `arenas/*.toml`, `modes/*.toml`,
+`kits/*.toml`, `stats.json`, `resets/*.jsonl` (crash log). Defaults are embedded from `config/` with
+`include_str!` and written on first load (`host::storage::write_defaults`).
+
+### Architecture (MinigameCore)
+- `model/`, `game/`, `state.rs`, `stats.rs`, `ipc.rs` are **pure**: no host calls, so they are tested
+  natively. A game step returns `game::effects::Out` (effects, protocol events, round results, resets,
+  removed players); `State::finish` routes events/results/index updates and returns `Vec<Effect>`.
+- `host::apply(server, effects)` does the Pumpkin calls, always **after** `state::with` returns.
+- IPC requests from mode plugins mutate state immediately; their host effects go to `State::deferred`
+  and run on the next tick. Delayed effects use `State::after(ticks, effects)` (drained by `State::tick`).
+- One repeating task (`ticker.rs`): every tick game steps + deferred effects + restore batch; every
+  `position_check_ticks` the position scan (void, bounds, regions, spawner pickups); every second
+  sidebars, spawner labels, PIE registration; every 5 s stats save.
+- Host-side caches of resources (`Entity` handles for spawner labels, sidebar state) live in
+  `thread_local!` (`RefCell`), since resources aren't `Send` and WASM plugins are single-threaded.
 
 ### Invariants (don't break these)
-- **No read-modify-write.** Every balance change is one `Storage` call that checks and changes in one
-  step (`deposit`, `withdraw`, `transfer`, `set`). There is no general "write balance" except admin `set`.
-- **The ledger is written first.** If `ledger::append` fails, the operation returns `Storage` and memory
-  is unchanged. Snapshots are only a speed-up; never write balances without a ledger entry.
-- **No host calls under the store lock** (`economy::with_store`), including logging. `Storage`
-  implementations must be pure + file IO.
-- **`api.rs` and `placeholders::handle` never call the host or another plugin.** Callers may invoke the
-  API from anywhere, and PIE calls `on_request` synchronously.
-- **Amounts are `i64` smallest units** everywhere except user-facing text (`Currency::parse_amount`,
-  `Currency::display`, `Currency::plain`).
-- **Protocol changes are additive.** New request fields need `#[serde(default)]`; new ops/errors are
-  fine; changing a field's meaning needs `PROTOCOL_VERSION` bumped and the old version still answered.
-- A cross-server backend (MariaDB) goes in `src/storage/` as another `Storage` impl, each method one
-  conditional SQL statement. Nothing above `storage/` should change.
+- **No host calls under the state lock** (`state::with`), including logging and IPC to other plugins.
+- **The core never sends IPC to a mode plugin.** Mode plugins poll. That keeps every call one-way
+  (mode plugin → core, core → PvP Manager/PIE, neither of which calls back) so no cycle can deadlock
+  on any Pumpkin version.
+- **`ipc.rs` and `host::pie::handle` are memory-only.**
+- **Every block the core lets change in a running arena is recorded first** (`host::record_block`), and
+  pistons are cancelled in arenas. Games past waiting never share an arena.
+- **Protocol changes are additive** (`client/src/protocol.rs`). New request fields need
+  `#[serde(default)]`; new ops, events (clients map unknown ones to `Event::Unknown`) and error kinds
+  (`ErrorKind::Other`) are fine; changing a meaning needs `PROTOCOL_VERSION` bumped.
+- Mode ids: `[a-z0-9]`, no `_` (placeholders split on it), not in `RESERVED_MODES`.
 
 ### Status
-Built, clippy/fmt clean, 12 native tests pass (currency, config, storage + replay, protocol, the IPC API
-and placeholders end-to-end against in-memory storage). **Not yet run on a live Pumpkin server.**
-Still to check there: IPC between two real plugins (and with the target missing), file writes from the
-sandbox after approving `fs.read.data`/`fs.write.data`, `rename` inside the WASI preopen (there is a
-fallback), and whether the host passes our `has_permission` check for `rustedvault:command.balance.others`.
+Built (release `.wasm` ~2 MB), clippy/fmt clean, 40 native tests pass (rules, arena/mode/kit parsing,
+round lifecycle incl. respawn/elimination/time-up/manual wins, damage and block rules, matchmaking,
+IPC protocol, stats, placeholders, crash-log parsing). **Not yet run on a live Pumpkin server.**
+The README's "Not yet verified" list is what to check first.
 
 ## Integrating with RustedVault
 Any plugin can use the economy without depending on it at load time.
@@ -469,6 +489,50 @@ These are useful if your plugin grants or checks them. They are all in the `dayb
 | `daybuilt_pvp_manager:classic.toggle` | May toggle own classic combat |
 | `daybuilt_pvp_manager:command.dbpvp` | May use `/dbpvp` at all |
 
+
+## Facts learned while building MinigameCore
+Verified = compiled, ran in native tests, or read in Pumpkin source (master `4dd7d73`, 15 Nov 2026)
+or the `pumpkin-plugin-api` 0.2.1 source. Unverified = reasoned.
+- **Event priority is not used for ordering (verified in source).** `PluginManager::register` pushes
+  handlers in registration order and `fire` iterates them in that order (blocking first, then
+  non-blocking concurrently). Effective order = plugin load order = dependency order.
+- **Synchronous re-entry (verified in source, master).** `LegacySyncReentry` is one admission shared by
+  all plugin stores: synchronous guest calls are serialized server-wide, and a callback along the same
+  call chain may re-enter a plugin already on it (max depth 64). So A→B→A works on master, and "both
+  plugins message each other at once" can't deadlock there. Older releases may differ; design one-way.
+  A re-entered plugin must not be holding its own `Mutex` (std `Mutex` is not re-entrant).
+- **`scheduler::schedule_delayed_task` leaks (verified in API source).** Handlers are inserted into
+  `TASK_HANDLERS` and never removed, even after a one-shot task fires. Don't create one per event;
+  keep your own tick-indexed queue driven by one repeating task.
+- **Debug of generated enums includes the type (verified, native test):** `format!("{:?}", e)` gives
+  `Enchantment::FireAspect`, `EntityType::TextDisplay`. Strip up to the last `::` before snake-casing.
+- **No item-drop function in API 0.2.1 (verified).** `world.drop_item`/`drop_item_naturally` exist in
+  Pumpkin master's host but not in the 0.2.1 WIT. `spawn_entity(EntityType::Item, ..)` gives no way to
+  set the stack. Options: give items directly (inventory `get_item`/`set_item` + `ItemStack::new`), or a
+  console `/summon` with item NBT (master's summon parses `Item`; unverified on releases).
+- **World names (verified in host source):** `world.get_name()` returns the same string
+  `server.get_world_by_name()` matches (it also matches the dimension's minecraft name).
+- **Per-player scoreboard (read in source):** `java_player.get_scoreboard()` is a
+  `ScoreboardProvider::Player`; `world.get_scoreboard()` is the world's (teams/nametags for everyone in it).
+- **Many block events carry no world (verified, WIT):** `BlockFromTo`, `BlockExplode`, `BlockForm`,
+  `BlockFade`, `BlockIgnite`, `EntityChangeBlock`, `BlockPiston*` only have positions; `BlockBurn`,
+  `BlockSpread`, `LeavesDecay` have `target_world`. Explosion events give only the centre, not the
+  destroyed blocks. `BlockBreak.player` is optional.
+- **Death (read in source, `living.rs`):** `PlayerDeathEvent` fires before `handle_killed`; cancelling it
+  returns early (no death processing). The final death message is then sent to **every** player on the
+  server if the world's `showDeathMessages` rule is on, so an empty message still prints a blank line.
+- **`set_movement_locked(bool)` exists on `Player` (verified in host source)**, useful instead of
+  zero-speed attributes for start freezes.
+- **API shapes (compile-verified):** `scoreboard.create_team(&str, TeamSettings)` takes settings by
+  value; `World::set_block_state(BlockPos, u16, BlockFlags)` with `BlockFlags::NOTIFY_LISTENERS |
+  FORCE_STATE | SKIP_DROPS`; `pumpkin_plugin_api::world::resolve_block_state(name, &[(k, v)])` → state
+  id; `TextDisplayEntity::from_entity(&entity)` then `get_display().set_billboard(..)`;
+  `StatusEffectInstance { effect_type, duration, amplifier, ambient, show_particles, show_icon }`.
+- **Clippy (verified):** wants a match guard instead of an `if` inside a match arm
+  (`collapsible_match`), `split_once` instead of `splitn(2, ..).nth(1)`, and a type alias for nested
+  tuple return types (`type_complexity`).
+- **A cargo git dependency on a workspace member works by package name** (unverified here, standard
+  cargo): `minigamecore-client = { git = "https://github.com/Wet-Hands/Daybuilt-MinigameCore" }`.
 
 ## Keeping this file current (do this at the end of every task)
 Before you finish any task in this repo, update this AGENTS.md:

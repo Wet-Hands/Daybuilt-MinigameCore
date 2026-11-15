@@ -251,6 +251,18 @@ mod calls {
         })
     }
 
+    pub fn cancel_schedule(game: &str, id: &str) -> Result<(), ClientError> {
+        done(Request::CancelSchedule {
+            game: game.into(),
+            id: id.into(),
+        })
+    }
+
+    /// Starts a game now (the countdown is skipped).
+    pub fn start(game: &str) -> Result<(), ClientError> {
+        done(Request::Start { game: game.into() })
+    }
+
     pub fn set_var(
         game: &str,
         player: Option<&str>,

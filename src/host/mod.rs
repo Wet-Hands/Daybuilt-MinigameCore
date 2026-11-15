@@ -409,8 +409,20 @@ fn auto_join(server: &Server, uuid: &str) {
 /// Sends a player to the lobby and applies the lobby settings.
 pub fn to_lobby(server: &Server, p: &Player, uuid: &str) {
     let cfg = state::with(|s| s.cfg.clone());
-    if let Some(spawn) = &cfg.lobby.spawn {
-        teleport(server, p, spawn);
+    match &cfg.lobby.spawn {
+        Some(spawn) => teleport(server, p, spawn),
+        // No lobby set: the first world's spawn, so nobody is left standing in an arena.
+        None => {
+            if let Some(w) = server.get_all_worlds().into_iter().next() {
+                let s = w.get_spawn_location();
+                let (x, y, z) = (
+                    f64::from(s.pos.x) + 0.5,
+                    f64::from(s.pos.y),
+                    f64::from(s.pos.z) + 0.5,
+                );
+                p.teleport((x, y, z), Some(s.yaw), Some(s.pitch), w);
+            }
+        }
     }
     reset_player(p, cfg.lobby.gamemode, cfg.lobby.clear_inventory);
     p.set_movement_locked(false);

@@ -186,6 +186,15 @@ impl State {
             self.stats.apply(r);
             self.stats_dirty = true;
         }
+        // On servers that queue everyone for one mode, players go back in the queue
+        // when their arena resets.
+        if !resets.is_empty() && self.cfg.auto_join().is_some() {
+            let again: Vec<Effect> = removed
+                .iter()
+                .map(|u| Effect::AutoJoin { player: u.clone() })
+                .collect();
+            self.after(60, again);
+        }
         for u in removed {
             self.index.remove(&u);
         }

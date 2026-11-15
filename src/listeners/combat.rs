@@ -68,8 +68,8 @@ impl EventHandler<EntityDamageByEntityEvent> for Hit {
             let attacker_in_game = attacker.as_deref().is_some_and(|a| s.index.contains_key(a));
             match s.game_of_mut(&victim) {
                 Some(g) => !g.allow_damage(&victim, attacker.as_deref(), false, now),
-                // A player in a game may not hit someone outside it.
-                None => attacker_in_game,
+                // A player in a game may not hit someone outside it; lobby rules otherwise.
+                None => attacker_in_game || s.cfg.lobby.no_damage,
             }
         });
         if cancel {
