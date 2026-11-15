@@ -1,0 +1,8 @@
+display_name = "&bSpleef"
+clear = true
+
+[[items]]
+slot = 0
+item = "minecraft:diamond_shovel"
+name = "&bSpleef Shovel"
+enchantments = { efficiency = 5 }

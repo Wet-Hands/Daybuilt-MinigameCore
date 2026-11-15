@@ -1,0 +1,30 @@
+# Example kit. Give it with /mga kit give starter, or set `kit = "starter"` in a mode's rules.
+display_name = "&aStarter"
+clear = true
+
+[[items]]
+slot = 0
+item = "minecraft:stone_sword"
+enchantments = { sharpness = 1 }
+
+[[items]]
+slot = 1
+item = "minecraft:bow"
+
+[[items]]
+slot = 8
+item = "minecraft:arrow"
+count = 16
+
+[[items]]
+slot = 2
+item = "minecraft:cooked_beef"
+count = 8
+name = "&6Steak"
+
+[chestplate]
+item = "minecraft:leather_chestplate"
+
+[[effects]]
+effect = "speed"
+seconds = 10

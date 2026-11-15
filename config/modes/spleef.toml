@@ -1,0 +1,44 @@
+# Example mode that needs no mode plugin: everything is config.
+# Players break snow under each other; falling below the arena is a death; last one standing wins.
+# Arenas need: bounds, spawn points (/mga arena <id> spawn) and "spleef" in their modes.
+display_name = "Spleef"
+default_format = "solo"
+
+[rules]
+gamemode = "survival"
+build = false
+break = "none"
+breakable = ["minecraft:snow_block"]
+fall_damage = false
+pvp = false
+damage = false
+hunger = false
+item_drop = false
+death_drops = "clear"
+respawn = false
+start_freeze = 3
+kit = "spleef"
+time_limit = 600
+time_up = "most_alive"
+
+[formats.solo]
+team_mode = "solo"
+teams = 16
+min_players = 2
+display_name = "Solo"
+
+[[schedule]]
+at = 300
+id = "half_time"
+label = "&cSudden death"
+actions = ["broadcast:&cFive minutes left!"]
+
+[sidebar]
+title = "&b&lSPLEEF"
+waiting = ["&7{arena}", "", "&fPlayers: &a{players}&7/&a{max}", "&f{status}"]
+running = ["&7Time: &f{time}", "{next_event}", "", "&fAlive: &a{alive}", "", "&fArena: &7{arena}"]
+ending = ["&6Winner:", "{winners}"]
+
+[rewards]
+win = []
+played = []
