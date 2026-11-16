@@ -1,0 +1,112 @@
+# Daybuilt MinigameCore configuration.
+# Delete a key to get its default back. Reload with /mga reload.
+
+[lobby]
+# Where players wait between rounds. Set it in game with /mga setlobby.
+# spawn = { world = "world", x = 0.5, y = 65.0, z = 0.5, yaw = 0.0, pitch = 0.0 }
+teleport_on_join = true
+gamemode = "adventure"
+clear_inventory = true
+# Console commands run when a player arrives in the lobby (on join and after each round).
+# Placeholders: {player} {uuid}
+commands = []
+# Queue players for a mode as soon as they join the server: "bedwars" or "bedwars:doubles".
+# Empty = off. Useful on servers that only run one mode.
+auto_join = ""
+# Outside of games: stop block changes (unless the player has daybuilt_minigamecore:build),
+# hunger, damage and item dropping.
+protect = true
+no_hunger = true
+no_damage = true
+no_item_drop = true
+
+[timing]
+countdown_seconds = 30
+# The countdown drops to this when the game fills up.
+full_countdown_seconds = 10
+ending_seconds = 8
+# Blocks restored per tick while an arena resets.
+reset_blocks_per_tick = 400
+# Ticks between position checks (void, arena bounds, regions, spawner pickups).
+position_check_ticks = 4
+
+[spawners]
+# "stockpile": items collect inside the spawner (its label shows how many) and go to the
+#              first player who stands on it. Works on every Pumpkin version.
+# "command":   each drop runs `command` as the console to drop a real item. Needs a
+#              /summon that accepts item NBT. Placeholders: {x} {y} {z} {item} {count} {world}
+mode = "stockpile"
+pickup_radius = 1.5
+command = 'summon minecraft:item {x} {y} {z} {Item:{id:"{item}",count:{count}},PickupDelay:0}'
+
+[reset]
+# Write changed blocks to disk as they happen so a crash mid-round is repaired on the next start.
+crash_safe = true
+# Entity types removed from an arena when it resets. Modes can add more (cleanup_entities).
+cleanup_entities = ["item", "arrow", "spectral_arrow", "trident", "tnt", "falling_block", "experience_orb", "snowball", "egg", "ender_pearl", "fireball", "small_fireball", "splash_potion", "lingering_potion", "fishing_bobber", "wind_charge", "area_effect_cloud"]
+# Blocks within this radius of an explosion are recorded before it goes off.
+explosion_radius = 6
+
+[protection]
+# Block changes inside arenas with no round running are cancelled
+# (players with daybuilt_minigamecore:build may still edit).
+idle_arenas = true
+
+[pvp_manager]
+# Use Daybuilt PvP Manager when it is installed (skipped silently when it is not).
+enabled = true
+# Players with PvP switched off get it switched on for the round, and back off afterwards.
+force_pvp = true
+# Clear combat tags when players go back to the lobby.
+untag_on_return = true
+
+[placeholders]
+# PumpkinPIE expansion. Namespace: lowercase letters and digits, no "_".
+enabled = true
+namespace = "mg"
+cache_ms = 1000
+
+[sidebar]
+# Used when a mode file has no [sidebar]. Lines use {placeholders}; see the README.
+enabled = true
+title = "&e&l{mode_name}"
+waiting = ["&7{arena} &8| &7{format}", "", "&fPlayers: &a{players}&7/&a{max}", "&f{status}", "", "&eplay.daybuilt.net"]
+running = ["&7Time: &f{time}", "{next_event}", "", "{teams}", "", "&fKills: &a{kills}"]
+ending = ["&6Winner:", "{winners}", "", "&fKills: &a{kills}"]
+
+[messages]
+prefix = "&8[&6Minigames&8]&r "
+joined = "{player} &7joined (&e{players}&7/&e{max}&7)"
+left = "{player} &7left (&e{players}&7/&e{max}&7)"
+waiting_status = "Waiting for players..."
+countdown_status = "Starting in &a{seconds}s"
+countdown = "&eThe game starts in &c{seconds} &eseconds."
+countdown_title = "&e{seconds}"
+countdown_cancelled = "&cNot enough players, the countdown stopped."
+round_start_title = "&a&lGO!"
+round_start_subtitle = "&7{mode_name}"
+death = "{player} &7died."
+killed = "{player} &7was killed by {killer}&7."
+final_death = " &b&lFINAL"
+respawn_title = "&c&lYOU DIED"
+respawn_subtitle = "&eRespawning in &c{seconds}&es"
+eliminated = "{player} &7was eliminated."
+eliminated_title = "&c&lELIMINATED"
+team_eliminated = "{team} &7has been eliminated!"
+win_title = "&6&lVICTORY!"
+lose_title = "&c&lGAME OVER"
+draw_title = "&e&lDRAW"
+winners = "&6&lWinner: {winners}"
+draw = "&eThe round ended in a draw."
+time_left = "&e{seconds} &7seconds left."
+not_in_game = "&cYou are not in a game."
+already_in_game = "&cYou are already in a game. Use /mg leave first."
+no_arena = "&cNo arena is free for {mode} right now. Try again soon."
+unknown_mode = "&cUnknown game: {mode}."
+joined_game = "&aYou joined &e{mode_name} &7({format}) &aon &e{arena}&a."
+left_game = "&7You left the game."
+kit_selected = "&aKit selected: &e{kit}"
+kit_unknown = "&cUnknown kit: {kit}"
+kit_denied = "&cYou can't use that kit."
+team_selected = "&aYou joined team {team}&a."
+team_full = "&cThat team is full."

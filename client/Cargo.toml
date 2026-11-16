@@ -1,0 +1,18 @@
+[package]
+name = "minigamecore-client"
+version = "0.1.0"
+edition = "2024"
+description = "Protocol types and IPC helpers for talking to Daybuilt MinigameCore from a game-mode plugin."
+license = "MIT"
+publish = false
+
+[features]
+default = ["ipc"]
+# Typed send functions. Needs pumpkin-plugin-api; turn off to use only the protocol types.
+ipc = ["dep:pumpkin-plugin-api"]
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+# Caret requirement so it unifies with the consuming plugin's copy.
+pumpkin-plugin-api = { version = "0.2.1", optional = true }

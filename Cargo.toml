@@ -2,23 +2,31 @@
 # Plugin identity. `name`, `version`, `authors` and `description` are read by
 # `src/lib.rs` (via env!("CARGO_PKG_*")) — this is the ONLY place to set them.
 # `name` becomes the plugin id, permission namespace and `<name>.wasm`.
-# Use snake_case (no hyphens) so the namespace and filename match exactly.
+# Keep `[package]` first: scripts/build.sh reads the first `name =` line.
 # ─────────────────────────────────────────────────────────────────────────────
 [package]
-name = "my_plugin"
+name = "daybuilt_minigamecore"
 version = "0.1.0"
 edition = "2024"
-authors = ["Your Name"]
-description = "A PumpkinMC server plugin."
+authors = ["Daybuilt"]
+description = "Arenas, teams, round lifecycle, kits, spawners and map reset for round-based minigames."
 license = "MIT"
 publish = false
 
 [lib]
 crate-type = ["cdylib"] # produces a WebAssembly component
 
+[workspace]
+members = ["client"]
+default-members = [".", "client"]
+
 [dependencies]
 pumpkin-plugin-api = "0.2.1"
+minigamecore-client = { path = "client", default-features = false }
 tracing = { version = "0.1", default-features = false }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml = { version = "0.9", default-features = false, features = ["std", "parse", "display", "serde"] }
 
 # Small, fast .wasm output for uploading.
 [profile.release]
