@@ -10,7 +10,7 @@
 //! - `ipc.rs`     the protocol for mode plugins — pure (effects are deferred)
 //! - `host/`      everything that calls Pumpkin: effects, files, kits, sidebar, spawners, reset
 //! - `listeners/` Pumpkin event handlers
-//! - `commands/`  `/mg` and `/mga`
+//! - `commands/`  `/mg` and `/dbmg`
 
 mod commands;
 mod config;

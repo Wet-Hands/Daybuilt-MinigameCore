@@ -15,7 +15,7 @@ use std::collections::BTreeMap;
 use serde::{Deserialize, Serialize};
 
 /// The core's plugin id (its Cargo package name).
-pub const PLUGIN_ID: &str = "daybuilt_minigamecore";
+pub const PLUGIN_ID: &str = "daybuilt_minigame_core";
 
 /// Current protocol version. Requests carry it as `"v"`.
 pub const PROTOCOL_VERSION: u32 = 1;
@@ -470,7 +470,7 @@ pub struct ArenaInfo {
     #[serde(default)]
     pub waiting: Option<Location>,
     pub regions: Vec<RegionInfo>,
-    /// Named point lists captured with `/mga arena <id> point <name>`.
+    /// Named point lists captured with `/dbmg arena <id> point <name>`.
     pub points: BTreeMap<String, Vec<Location>>,
     /// Free-form values for the mode plugin (`[values]` in the arena file).
     pub values: BTreeMap<String, String>,

@@ -282,7 +282,7 @@ impl ArenaDef {
         }
     }
 
-    /// Problems that stop the arena from being used (shown by `/mga arena <id> info`).
+    /// Problems that stop the arena from being used (shown by `/dbmg arena <id> info`).
     pub fn problems(&self) -> Vec<String> {
         let mut out = Vec::new();
         if self.pos1 == self.pos2 {

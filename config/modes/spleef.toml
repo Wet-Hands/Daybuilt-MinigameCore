@@ -1,6 +1,6 @@
 # Example mode that needs no mode plugin: everything is config.
 # Players break snow under each other; falling below the arena is a death; last one standing wins.
-# Arenas need: bounds, spawn points (/mga arena <id> spawn) and "spleef" in their modes.
+# Arenas need: bounds, spawn points (/dbmg arena <id> spawn) and "spleef" in their modes.
 display_name = "Spleef"
 default_format = "solo"
 

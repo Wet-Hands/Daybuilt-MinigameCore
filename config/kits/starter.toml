@@ -1,4 +1,4 @@
-# Example kit. Give it with /mga kit give starter, or set `kit = "starter"` in a mode's rules.
+# Example kit. Give it with /dbmg kit give starter, or set `kit = "starter"` in a mode's rules.
 display_name = "&aStarter"
 clear = true
 

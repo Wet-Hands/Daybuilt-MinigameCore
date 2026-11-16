@@ -1,5 +1,5 @@
-//! Commands. `/mg` for players, `/mga` for admins (and for console-driven integrations
-//! such as NPCs or menus: `/mga join <player> <mode>`).
+//! Commands. `/mg` for players, `/dbmg` for admins (and for console-driven integrations
+//! such as NPCs or menus: `/dbmg join <player> <mode>`).
 //!
 //! Never use `CommandNode::suggest` (server-side tab completion panics Pumpkin 0.2.2).
 
@@ -7,7 +7,7 @@ mod admin;
 mod player;
 
 use pumpkin_plugin_api::{
-    Context, Result,
+    Context,
     command::{Command, CommandError, CommandSender, ConsumedArgs},
     command_wit::{Arg, Number},
     permission::{Permission, PermissionDefault, PermissionLevel},
@@ -17,48 +17,47 @@ use pumpkin_plugin_api::{
 use crate::host::colored;
 use crate::state;
 
-pub fn register(context: &Context) -> Result<()> {
+/// Registers permissions and commands. Each step is independent: a failed permission
+/// registration is logged and never stops the commands from being registered.
+pub fn register(context: &Context) {
     perm(
         context,
         "build",
         "Change blocks in the lobby and in arenas",
         PermissionDefault::Op(PermissionLevel::Two),
-    )?;
+    );
     perm(
         context,
         "kit.all",
         "Use any kit",
         PermissionDefault::Op(PermissionLevel::Two),
-    )?;
+    );
     register_command(
         context,
         player::command(),
         "command.mg",
         "Use /mg",
         PermissionDefault::Allow,
-    )?;
+    );
     register_command(
         context,
         admin::command(),
-        "command.mga",
-        "Use /mga (arena setup and game control)",
+        "command.dbmg",
+        "Use /dbmg (arena setup and game control)",
         PermissionDefault::Op(PermissionLevel::Two),
-    )?;
-    Ok(())
+    );
 }
 
-fn perm(
-    context: &Context,
-    node: &str,
-    description: &str,
-    default: PermissionDefault,
-) -> Result<()> {
-    context.register_permission(&Permission {
-        node: format!("{}:{node}", crate::ID),
+fn perm(context: &Context, node: &str, description: &str, default: PermissionDefault) {
+    let full = format!("{}:{node}", crate::ID);
+    if let Err(e) = context.register_permission(&Permission {
+        node: full.clone(),
         description: description.into(),
         default,
         children: vec![],
-    })
+    }) {
+        tracing::warn!("{}: could not register permission {full}: {e}", crate::ID);
+    }
 }
 
 fn register_command(
@@ -67,11 +66,10 @@ fn register_command(
     node: &str,
     description: &str,
     default: PermissionDefault,
-) -> Result<()> {
+) {
     let full = format!("{}:{node}", crate::ID);
-    perm(context, node, description, default)?;
+    perm(context, node, description, default);
     context.register_command(command, &full);
-    Ok(())
 }
 
 pub fn word(args: &ConsumedArgs, key: &str) -> Option<String> {
@@ -120,7 +118,7 @@ pub fn need_player(
     })
 }
 
-/// Reloads all files (used at load and by `/mga reload`).
+/// Reloads all files (used at load and by `/dbmg reload`).
 pub fn reload_all() -> String {
     admin::reload()
 }

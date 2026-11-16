@@ -46,7 +46,7 @@ impl Plugin for MinigameCore {
             );
         }
         state::with(|s| s.persist = persist);
-        let summary = commands_reload();
+        let summary = crate::model::text::strip(&commands_reload());
         if persist {
             let stats = storage::load_stats();
             state::with(|s| s.stats = stats);
@@ -66,12 +66,13 @@ impl Plugin for MinigameCore {
             }
         });
 
-        if let Err(e) = commands::register(&context) {
-            tracing::error!("{ID}: could not register commands: {e}");
-        }
+        commands::register(&context);
         listeners::register(&context);
         ticker::start();
-        tracing::info!("{ID} v{} loaded: {summary}", env!("CARGO_PKG_VERSION"));
+        tracing::info!(
+            "{ID} v{} loaded: {summary} Commands: /mg (players), /dbmg (admin).",
+            env!("CARGO_PKG_VERSION")
+        );
         Ok(())
     }
 

@@ -1,6 +1,6 @@
 # AGENTS.md - PumpkinMC plugin (Rust → WebAssembly component)
 
-This repo is **Daybuilt MinigameCore** (`daybuilt_minigamecore`): arenas, teams, matchmaking, round
+This repo is **Daybuilt MinigameCore** (`daybuilt_minigame_core`): arenas, teams, matchmaking, round
 lifecycle, kits, spawners, sidebar, stats and map reset for round-based minigames. Mode plugins
 (Bedwars, Duels, Spleef, ...) are separate plugins that talk to it through `client/`
 (`minigamecore-client`). User-facing docs: README.md. Sections below about RustedVault and PvP
@@ -104,9 +104,9 @@ supplies an "expansion" for it in `src/host/pie.rs` (registration from the ticke
   No `Server`/`Player` is available, and `viewer` is a player **name** (resolve via `names::uuid_for`).
 - **Message PIE as rarely as possible.** Pumpkin runs each plugin's calls one at a time. If we message PIE
   while PIE is waiting on our `on_request`, both block forever. So: register at startup (until it
-  succeeds), on a config change, and on `/mga reload`. No periodic refresh. Never call PIE from an
+  succeeds), on a config change, and on `/dbmg reload`. No periodic refresh. Never call PIE from an
   event or command handler directly; set `State::pie_dirty = true` and let the ticker send it.
-- **PIE forgets expansions when it reloads**, and there is no push from it. `/mga reload` re-registers.
+- **PIE forgets expansions when it reloads**, and there is no push from it. `/dbmg reload` re-registers.
 - **Sender check:** `handle_ipc_message` (`src/plugin.rs`) routes messages whose sender is `"PumpkinPIE"` to
   `host::pie::handle`; everything else is the mode-plugin JSON protocol in `ipc.rs`. Keep those two separate.
 - **Namespace:** lowercase letters/digits, starts with a letter, **no `_`** (namespace = text before
@@ -231,7 +231,7 @@ impl EventHandler<PlayerJoinEvent> for MyListener {
 ### Persistent data
 Add `permissions::FS_READ_DATA` / `FS_WRITE_DATA` to metadata, then `std::fs` under `context.get_data_folder()`.
 
-Data folder (`plugins/data/daybuilt_minigamecore/`): `config.toml`, `lobby.toml` (from `/mga setlobby`,
+Data folder (`plugins/data/daybuilt_minigame_core/`): `config.toml`, `lobby.toml` (from `/dbmg setlobby`,
 overrides `[lobby] spawn` so the commented config is never rewritten), `arenas/*.toml`, `modes/*.toml`,
 `kits/*.toml`, `stats.json`, `resets/*.jsonl` (crash log). Defaults are embedded from `config/` with
 `include_str!` and written on first load (`host::storage::write_defaults`).
@@ -521,6 +521,12 @@ or the `pumpkin-plugin-api` 0.2.1 source. Unverified = reasoned.
 - **Death (read in source, `living.rs`):** `PlayerDeathEvent` fires before `handle_killed`; cancelling it
   returns early (no death processing). The final death message is then sent to **every** player on the
   server if the world's `showDeathMessages` rule is on, so an empty message still prints a blank line.
+- **Permission overrides are keyed by `metadata().name` (verified in source,
+  `check_permissions_cached`).** `[plugins.overrides.<name>]` must match the Cargo package name exactly;
+  a mismatch means no override, so a panel server silently skips the plugin. Console lines to look for:
+  `Permission denied for plugin "<name>", skipping loading.` and `Found cached permission decision ...
+  (approved: false)`. Permission prompts only work on the main thread: a plugin hot-reloaded while the
+  server runs (file dropped into `plugins/`) that requests permissions is denied ("non-main thread").
 - **`set_movement_locked(bool)` exists on `Player` (verified in host source)**, useful instead of
   zero-speed attributes for start freezes.
 - **API shapes (compile-verified):** `scoreboard.create_team(&str, TeamSettings)` takes settings by

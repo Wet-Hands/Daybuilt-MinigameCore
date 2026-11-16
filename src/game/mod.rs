@@ -630,7 +630,7 @@ impl Game {
         }
     }
 
-    /// `/mga start` or the `start` op: end the countdown now. Needs at least one player.
+    /// `/dbmg start` or the `start` op: end the countdown now. Needs at least one player.
     pub fn force_start(&mut self, ctx: &Ctx, out: &mut Out) -> Result<(), &'static str> {
         if !self.phase.joinable() {
             return Err("the round already started");
@@ -1401,7 +1401,7 @@ impl Game {
         out.resets.push(self.id.clone());
     }
 
-    /// Stops the game at once (admin `/mga stop`, unload): no results, straight to reset.
+    /// Stops the game at once (admin `/dbmg stop`, unload): no results, straight to reset.
     pub fn abort(&mut self, out: &mut Out) {
         if matches!(self.phase, GamePhase::Resetting) {
             return;
