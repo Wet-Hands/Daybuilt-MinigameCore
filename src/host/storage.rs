@@ -1,9 +1,9 @@
 //! Files in the data folder: config, arenas, modes, kits, stats.
 //!
 //! ```text
-//! plugins/data/daybuilt_minigamecore/
+//! plugins/data/daybuilt_minigame_core/
 //!   config.toml
-//!   arenas/<id>.toml     written by /mga arena commands
+//!   arenas/<id>.toml     written by /dbmg arena commands
 //!   modes/<mode>.toml
 //!   kits/<kit>.toml
 //!   stats.json
@@ -216,7 +216,7 @@ pub fn save_lobby_spawn(spawn: &crate::model::WorldLoc) -> Result<(), String> {
     .map_err(|e| e.to_string())?;
     write(
         "lobby.toml",
-        &format!("# Written by /mga setlobby.\n{text}"),
+        &format!("# Written by /dbmg setlobby.\n{text}"),
     )
 }
 

@@ -5,7 +5,7 @@
 # Keep `[package]` first: scripts/build.sh reads the first `name =` line.
 # ─────────────────────────────────────────────────────────────────────────────
 [package]
-name = "daybuilt_minigamecore"
+name = "daybuilt_minigame_core"
 version = "0.1.0"
 edition = "2024"
 authors = ["Daybuilt"]

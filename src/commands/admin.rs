@@ -1,4 +1,4 @@
-//! `/mga` — arena setup, kits, game control, reload. Changes to arenas are saved at once.
+//! `/dbmg` — arena setup, kits, game control, reload. Changes to arenas are saved at once.
 
 use std::sync::Arc;
 
@@ -156,7 +156,7 @@ pub fn command() -> Command {
         );
 
     Command::new(
-        &["mga".into(), "minigameadmin".into()],
+        &["dbmg".into(), "minigameadmin".into()],
         "Minigame setup and control.",
     )
     .execute(H(Act::Help))
@@ -198,16 +198,16 @@ pub fn command() -> Command {
 }
 
 const HELP: &[&str] = &[
-    "&6/mga reload &7| &6setlobby &7| &6start <arena> &7| &6stop <arena>",
-    "&6/mga join <player> <mode> [format] &7| &6leave <player> &7| &6setkit <player> <kit>",
-    "&6/mga kit save <kit> &7| &6kit give <kit> [player]",
-    "&6/mga arena list &7| &6create <id> &7| &6delete <id>",
-    "&6/mga arena <id> &finfo | pos1 | pos2 | spectator | waiting | spawn | enable | disable | maxplayers <n>",
-    "&6/mga arena <id> team <team> &fspawn | color <color> | remove",
-    "&6/mga arena <id> mode &fadd|remove <mode>",
-    "&6/mga arena <id> spawner &fadd <group> <item> <ticks> | remove",
-    "&6/mga arena <id> region <name> &fpos1 | pos2 | remove | flag <build|break|pvp|damage|track> <true|false>",
-    "&6/mga arena <id> point &fadd|clear <name> &7| &6value <key> <text>",
+    "&6/dbmg reload &7| &6setlobby &7| &6start <arena> &7| &6stop <arena>",
+    "&6/dbmg join <player> <mode> [format] &7| &6leave <player> &7| &6setkit <player> <kit>",
+    "&6/dbmg kit save <kit> &7| &6kit give <kit> [player]",
+    "&6/dbmg arena list &7| &6create <id> &7| &6delete <id>",
+    "&6/dbmg arena <id> &finfo | pos1 | pos2 | spectator | waiting | spawn | enable | disable | maxplayers <n>",
+    "&6/dbmg arena <id> team <team> &fspawn | color <color> | remove",
+    "&6/dbmg arena <id> mode &fadd|remove <mode>",
+    "&6/dbmg arena <id> spawner &fadd <group> <item> <ticks> | remove",
+    "&6/dbmg arena <id> region <name> &fpos1 | pos2 | remove | flag <build|break|pvp|damage|track> <true|false>",
+    "&6/dbmg arena <id> point &fadd|clear <name> &7| &6value <key> <text>",
 ];
 
 fn here(p: &Player) -> (String, Location) {
@@ -426,7 +426,7 @@ impl CommandHandler for H {
                 } else {
                     storage::save_arena(&def).map_err(|e| fail(&format!("&c{e}")))?;
                     Ok(format!(
-                        "&aCreated '{id}' in {world} (disabled). Next: pos1, pos2, spawns, then /mga arena {id} enable."
+                        "&aCreated '{id}' in {world} (disabled). Next: pos1, pos2, spawns, then /dbmg arena {id} enable."
                     ))
                 }
             }
@@ -434,7 +434,7 @@ impl CommandHandler for H {
                 let id = word(&args, "id").unwrap_or_default().to_ascii_lowercase();
                 let r = state::with(|s| {
                     if s.games.contains_key(&id) {
-                        return Err("&cA game is using it; /mga stop it first.".to_string());
+                        return Err("&cA game is using it; /dbmg stop it first.".to_string());
                     }
                     s.arenas
                         .remove(&id)

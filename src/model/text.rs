@@ -26,7 +26,6 @@ pub fn legacy(s: &str) -> String {
 }
 
 /// Removes `&x` and `§x` codes (for console text and length checks).
-#[cfg(test)]
 pub fn strip(s: &str) -> String {
     let mut out = String::with_capacity(s.len());
     let mut chars = s.chars();

@@ -1,8 +1,8 @@
 # Daybuilt MinigameCore configuration.
-# Delete a key to get its default back. Reload with /mga reload.
+# Delete a key to get its default back. Reload with /dbmg reload.
 
 [lobby]
-# Where players wait between rounds. Set it in game with /mga setlobby.
+# Where players wait between rounds. Set it in game with /dbmg setlobby.
 # spawn = { world = "world", x = 0.5, y = 65.0, z = 0.5, yaw = 0.0, pitch = 0.0 }
 teleport_on_join = true
 gamemode = "adventure"
@@ -13,7 +13,7 @@ commands = []
 # Queue players for a mode as soon as they join the server: "bedwars" or "bedwars:doubles".
 # Empty = off. Useful on servers that only run one mode.
 auto_join = ""
-# Outside of games: stop block changes (unless the player has daybuilt_minigamecore:build),
+# Outside of games: stop block changes (unless the player has daybuilt_minigame_core:build),
 # hunger, damage and item dropping.
 protect = true
 no_hunger = true
@@ -49,7 +49,7 @@ explosion_radius = 6
 
 [protection]
 # Block changes inside arenas with no round running are cancelled
-# (players with daybuilt_minigamecore:build may still edit).
+# (players with daybuilt_minigame_core:build may still edit).
 idle_arenas = true
 
 [pvp_manager]

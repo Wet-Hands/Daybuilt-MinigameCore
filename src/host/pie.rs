@@ -1,7 +1,7 @@
 //! PumpkinPIE expansion (optional). Protocol: UTF-8 JSON over IPC to `PumpkinPIE`.
 //!
 //! - Registration is sent from the ticker only, retried with backoff until PIE answers,
-//!   and again after `/mga reload`. Never from event or command handlers.
+//!   and again after `/dbmg reload`. Never from event or command handlers.
 //! - `on_request` (PIE → us) is answered from memory only; it must not call the host or PIE.
 //! - PumpkinPIE is never listed in `metadata().dependencies`.
 //!

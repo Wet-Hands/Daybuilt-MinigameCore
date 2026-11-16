@@ -2,7 +2,7 @@
 
 The shared base for round-based minigames on [Pumpkin](https://github.com/Pumpkin-MC/Pumpkin): arenas, teams, matchmaking, the round lifecycle, kits, item spawners, the sidebar, stats and putting the map back after every round.
 
-It ships as one WebAssembly plugin, `daybuilt_minigamecore.wasm`. Game modes such as Bedwars, Duels, Hunger Games, Spleef, TNT Run or COD Zombies are **separate plugins** that talk to it over IPC through the [`minigamecore-client`](client/) crate. Simple modes need no plugin at all: the bundled `spleef` mode runs from its config file alone.
+It ships as one WebAssembly plugin, `daybuilt_minigame_core.wasm`. Game modes such as Bedwars, Duels, Hunger Games, Spleef, TNT Run or COD Zombies are **separate plugins** that talk to it over IPC through the [`minigamecore-client`](client/) crate. Simple modes need no plugin at all: the bundled `spleef` mode runs from its config file alone.
 
 Several games, of different modes, can run on one server at the same time, one per arena. Matchmaking puts players into an arena that can run the mode they asked for with the right team layout.
 
@@ -11,6 +11,7 @@ Several games, of different modes, can run on one server at the same time, one p
 ## Contents
 
 - [Install](#install)
+- [If /mg and /dbmg don't appear](#if-mg-and-dbmg-dont-appear)
 - [Concepts](#concepts)
 - [Setting up an arena](#setting-up-an-arena)
 - [Mode files](#mode-files)
@@ -26,30 +27,42 @@ Several games, of different modes, can run on one server at the same time, one p
 
 ## Install
 
-1. Copy `daybuilt_minigamecore.wasm` into the server's `plugins/` folder.
+1. Copy `daybuilt_minigame_core.wasm` into the server's `plugins/` folder.
 2. The plugin asks for `fs.read.data` and `fs.write.data` (arenas, modes, kits and stats are files). Pumpkin asks on the console before loading. On a panel with no console input, pre-approve it in the server config:
 
    ```toml
-   [plugins.overrides.daybuilt_minigamecore]
+   [plugins.overrides.daybuilt_minigame_core]
    allowed_permissions = ["fs.read.data", "fs.write.data"]
    ```
 
    Without these it still loads, with built-in defaults, but nothing is saved. The console says so.
-3. On first start it writes `plugins/data/daybuilt_minigamecore/` with `config.toml`, an example mode (`modes/spleef.toml`) and example kits. The console line `daybuilt_minigamecore v0.1.0 loaded: ...` confirms it loaded.
-4. Stand where players should wait between rounds and run `/mga setlobby`.
+3. On first start it writes `plugins/data/daybuilt_minigame_core/` with `config.toml`, an example mode (`modes/spleef.toml`) and example kits. The console line `daybuilt_minigame_core v0.1.0 loaded: ...` confirms it loaded.
+4. Stand where players should wait between rounds and run `/dbmg setlobby`.
 
 ```text
-plugins/data/daybuilt_minigamecore/
+plugins/data/daybuilt_minigame_core/
   config.toml          main settings (comments explain every key)
-  lobby.toml           lobby spawn, written by /mga setlobby
-  arenas/<id>.toml     one per arena, written by /mga arena commands
+  lobby.toml           lobby spawn, written by /dbmg setlobby
+  arenas/<id>.toml     one per arena, written by /dbmg arena commands
   modes/<mode>.toml    one per game mode
   kits/<kit>.toml      one per kit
   stats.json           player statistics
   resets/<arena>.jsonl blocks changed in a running round (crash safety; deleted after each reset)
 ```
 
-`/mga reload` re-reads everything. Games already running keep the arena and mode settings they started with.
+`/dbmg reload` re-reads everything. Games already running keep the arena and mode settings they started with.
+
+### If /mg and /dbmg don't appear
+
+The plugin needs no mode plugin: `/mg`, `/dbmg` and the bundled `spleef` mode work on their own. Missing commands mean the plugin did not load. Look in the console:
+
+| Console line | Fix |
+|---|---|
+| `Permission denied for plugin "daybuilt_minigame_core", skipping loading.` | Add the `[plugins.overrides.daybuilt_minigame_core]` block above. The key must be exactly the plugin id `daybuilt_minigame_core`. Or answer `y` at the prompt. |
+| `Found cached permission decision for plugin ... (approved: false)` | An earlier "no" is cached in `plugins/permission_cache.json`. Delete that entry, or use the override block, then restart. |
+| `requests permissions from a non-main thread ... Denying permissions` | The `.wasm` was added or replaced while the server was running (hot reload). Restart the server instead. |
+| `Failed to initialize plugin daybuilt_minigame_core: ...` | Please send this line; it is a bug. |
+| `daybuilt_minigame_core v0.1.0 loaded: ... Commands: /mg (players), /dbmg (admin).` | Loaded. `/dbmg` needs op level 2. |
 
 ## Concepts
 
@@ -72,30 +85,30 @@ Players who disconnect mid-round count as a loss and can't rejoin. After a round
 All of this is done in game by an operator. Every command saves the arena file immediately.
 
 ```text
-/mga arena create castle            # in the world the arena is built in; starts disabled
-/mga arena castle pos1              # stand at one corner of the arena
-/mga arena castle pos2              # stand at the opposite corner (include everything players can reach)
-/mga arena castle team red spawn    # adds a spawn for team "red" where you stand (repeat for more spawns)
-/mga arena castle team blue spawn
-/mga arena castle team blue color blue   # colour is guessed from the team name; set it if not
-/mga arena castle spectator         # where dead and eliminated players watch from
-/mga arena castle mode add bedwars  # which modes may use it (none listed = any mode that fits)
-/mga arena castle info              # shows what it can host and anything missing
-/mga arena castle enable
+/dbmg arena create castle            # in the world the arena is built in; starts disabled
+/dbmg arena castle pos1              # stand at one corner of the arena
+/dbmg arena castle pos2              # stand at the opposite corner (include everything players can reach)
+/dbmg arena castle team red spawn    # adds a spawn for team "red" where you stand (repeat for more spawns)
+/dbmg arena castle team blue spawn
+/dbmg arena castle team blue color blue   # colour is guessed from the team name; set it if not
+/dbmg arena castle spectator         # where dead and eliminated players watch from
+/dbmg arena castle mode add bedwars  # which modes may use it (none listed = any mode that fits)
+/dbmg arena castle info              # shows what it can host and anything missing
+/dbmg arena castle enable
 ```
 
-For free-for-all formats (`team_mode = "solo"`), add individual spawns with `/mga arena castle spawn` instead of team spawns.
+For free-for-all formats (`team_mode = "solo"`), add individual spawns with `/dbmg arena castle spawn` instead of team spawns.
 
 Optional extras:
 
 | Command | Use |
 |---|---|
-| `/mga arena <id> waiting` | Players wait here (inside the arena) instead of the server lobby until the round starts. |
-| `/mga arena <id> spawner add <group> <item> <ticks>` | An item spawner where you stand. Groups can be sped up or switched off at runtime. Labels and caps are edited in the file. `spawner remove` removes the nearest one. |
-| `/mga arena <id> region <name> pos1` / `pos2` | A named box. `region <name> flag build false` (also `break`, `pvp`, `damage`, `track`) overrides the round's rules inside it. Mode plugins get enter/leave events. |
-| `/mga arena <id> point add <name>` | A named list of positions for mode plugins (bed locations, chest locations, zombie spawns). |
-| `/mga arena <id> value <key> <text>` | A free-form value for mode plugins. |
-| `/mga arena <id> maxplayers <n>` | Caps players below what the format allows. |
+| `/dbmg arena <id> waiting` | Players wait here (inside the arena) instead of the server lobby until the round starts. |
+| `/dbmg arena <id> spawner add <group> <item> <ticks>` | An item spawner where you stand. Groups can be sped up or switched off at runtime. Labels and caps are edited in the file. `spawner remove` removes the nearest one. |
+| `/dbmg arena <id> region <name> pos1` / `pos2` | A named box. `region <name> flag build false` (also `break`, `pvp`, `damage`, `track`) overrides the round's rules inside it. Mode plugins get enter/leave events. |
+| `/dbmg arena <id> point add <name>` | A named list of positions for mode plugins (bed locations, chest locations, zombie spawns). |
+| `/dbmg arena <id> value <key> <text>` | A free-form value for mode plugins. |
+| `/dbmg arena <id> maxplayers <n>` | Caps players below what the format allows. |
 
 Spawner labels: in `arenas/<id>.toml`, set `label = "&bDiamond &7({stock})\n&e{seconds}s"` on a spawner. Placeholders: `{stock}`, `{seconds}` (until the next drop), `{group}`, and `{var:<key>}` for values a mode plugin sets.
 
@@ -204,7 +217,7 @@ Pistons are always cancelled inside arenas, because what they move is not report
 
 ## Kits
 
-`kits/<id>.toml`. The fastest way to make one: fill your inventory and armour, then `/mga kit save <id>`.
+`kits/<id>.toml`. The fastest way to make one: fill your inventory and armour, then `/dbmg kit save <id>`.
 
 ```toml
 display_name = "&aStarter"
@@ -228,33 +241,33 @@ seconds = 10             # 0 = for the whole round
 amplifier = 0
 ```
 
-A player's kit comes from, in order: their choice (`/mg kit`, `/mga setkit`, or a mode plugin), then the round's `kit` rule.
+A player's kit comes from, in order: their choice (`/mg kit`, `/dbmg setkit`, or a mode plugin), then the round's `kit` rule.
 
 ## Commands and permissions
 
 | Command | Permission (default) | |
 |---|---|---|
-| `/mg join <mode> [format]` | `daybuilt_minigamecore:command.mg` (everyone) | Matchmaking |
+| `/mg join <mode> [format]` | `daybuilt_minigame_core:command.mg` (everyone) | Matchmaking |
 | `/mg leave` | same | Leave (a loss if the round is running) |
 | `/mg list`, `/mg modes` | same | Games and modes |
 | `/mg kit <kit>` | same, plus the kit's own `permission` | Choose a kit |
 | `/mg team <team>` | same | Choose a team (formats with `team_choice`) |
 | `/mg stats [player]` | same | Statistics |
-| `/mga ...` | `daybuilt_minigamecore:command.mga` (op level 2) | Setup and control, see `/mga` |
-| | `daybuilt_minigamecore:build` (op level 2) | Change blocks in the lobby and in arenas |
-| | `daybuilt_minigamecore:kit.all` (op level 2) | Use any kit |
+| `/dbmg ...` | `daybuilt_minigame_core:command.dbmg` (op level 2) | Setup and control, see `/dbmg` |
+| | `daybuilt_minigame_core:build` (op level 2) | Change blocks in the lobby and in arenas |
+| | `daybuilt_minigame_core:kit.all` (op level 2) | Use any kit |
 
 Admin commands also work from the console, which is how NPCs and menus should send players into games:
 
 | Command | |
 |---|---|
-| `/mga join <player> <mode> [format]` | Matchmaking for someone else (RustedNPC, Economy Manager menus) |
-| `/mga leave <player>` | |
-| `/mga setkit <player> <kit>` | Select a kit (e.g. from a kit menu) |
-| `/mga start <arena>` | Start now, even below `min_players` |
-| `/mga stop <arena>` | End now, no results, reset |
-| `/mga kit give <kit> [player]` | Apply a kit immediately |
-| `/mga reload`, `/mga setlobby` | |
+| `/dbmg join <player> <mode> [format]` | Matchmaking for someone else (RustedNPC, Economy Manager menus) |
+| `/dbmg leave <player>` | |
+| `/dbmg setkit <player> <kit>` | Select a kit (e.g. from a kit menu) |
+| `/dbmg start <arena>` | Start now, even below `min_players` |
+| `/dbmg stop <arena>` | End now, no results, reset |
+| `/dbmg kit give <kit> [player]` | Apply a kit immediately |
+| `/dbmg reload`, `/dbmg setlobby` | |
 
 Lobby protection (`[lobby] protect`, `no_hunger`, `no_damage`, `no_item_drop`) applies to everyone not in a game. Turn it off in `config.toml` if another plugin handles the lobby.
 
@@ -297,7 +310,7 @@ With [PumpkinPIE](https://github.com/Rennex07/PumpkinPIE) installed (optional; r
 | [Daybuilt PvP Manager](#daybuilt-pvp-manager) | IPC (`daybuilt_pvp_manager`) | No |
 | RustedVault | `[rewards]` console commands such as `eco give {player} 100` | No |
 | PumpkinPIE | Placeholder expansion | No |
-| RustedNPC / Economy Manager | Run `/mga join <player> <mode>` and `/mga setkit <player> <kit>` as console | No |
+| RustedNPC / Economy Manager | Run `/dbmg join <player> <mode>` and `/dbmg setkit <player> <kit>` as console | No |
 
 None of these are listed as load dependencies, so a missing one never stops the core from loading.
 
@@ -398,11 +411,11 @@ Host effects of requests (teleports, kits, blocks, messages) are applied on the 
 
 ### Rules for mode plugins
 
-- **Don't list `daybuilt_minigamecore` in your `dependencies`** unless you want your plugin to refuse to load without it. Treat `ClientError::Unavailable` as "core not loaded" and keep retrying `register_mode` from your ticker.
+- **Don't list `daybuilt_minigame_core` in your `dependencies`** unless you want your plugin to refuse to load without it. Treat `ClientError::Unavailable` as "core not loaded" and keep retrying `register_mode` from your ticker.
 - The core never calls your plugin, so calling it from any event handler, command or task can't deadlock.
 - If your plugin cancels or un-cancels block events yourself, remember the reset log: call `record_block` before you let a block change that the core refused, or use `set_block`.
 - Pumpkin runs event handlers in plugin **load order** (the priority value is not used for ordering). If your plugin must see the core's decision on an event first, list the core in `dependencies` so it loads before you.
-- For other languages: the wire format is JSON over IPC to `daybuilt_minigamecore`, `{"v":1,"op":"<op>",...}` → `{"ok":true,"reply":...}` or `{"ok":false,"error":{"kind":"...","message":"..."}}`. The complete definition is [`client/src/protocol.rs`](client/src/protocol.rs).
+- For other languages: the wire format is JSON over IPC to `daybuilt_minigame_core`, `{"v":1,"op":"<op>",...}` → `{"ok":true,"reply":...}` or `{"ok":false,"error":{"kind":"...","message":"..."}}`. The complete definition is [`client/src/protocol.rs`](client/src/protocol.rs).
 
 ### How the example modes map onto the core
 
@@ -422,7 +435,7 @@ There is no API to copy a world, so the core keeps a **change log**: the first t
 - Fluid flow, fire, nature (grass, leaves, ice, snow), falling blocks and entity block changes are recorded or cancelled according to the rules.
 - Explosions: every block within `explosion_radius` is read first. Blocks the `explosions` rule allows to break are recorded; the rest are put back right after the blast.
 - Pistons are cancelled in arenas.
-- Arenas with no round running are protected from all changes (except players with `daybuilt_minigamecore:build`).
+- Arenas with no round running are protected from all changes (except players with `daybuilt_minigame_core:build`).
 - **Crash safety:** each recorded block is also appended to `resets/<arena>.jsonl`. If the server stops mid-round, the arena is repaired on the next start, before it can host a game.
 
 Keeping `break = "placed"` keeps the log small. `break = "any"` on a big map works, but every broken block is one entry.
@@ -445,7 +458,7 @@ Built against `pumpkin-plugin-api` 0.2.1 and Pumpkin's source, but not run on a 
 
 ```bash
 rustup target add wasm32-wasip2                          # once
-scripts/build.sh                                         # → dist/daybuilt_minigamecore.wasm
+scripts/build.sh                                         # → dist/daybuilt_minigame_core.wasm
 cargo test --workspace --target x86_64-unknown-linux-gnu # native tests
 cargo clippy -- -D warnings && cargo fmt --check
 ```
@@ -462,7 +475,7 @@ src/ipc.rs         the mode-plugin protocol (pure; host work is deferred to the 
 src/host/          everything that calls Pumpkin: effects, files, kits, sidebar, spawners, reset,
                    PvP Manager, PumpkinPIE
 src/listeners/     Pumpkin event handlers
-src/commands/      /mg and /mga
+src/commands/      /mg and /dbmg
 src/ticker.rs      the single repeating task
 ```
 

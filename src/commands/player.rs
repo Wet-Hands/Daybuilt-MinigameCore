@@ -259,7 +259,7 @@ impl CommandHandler for H {
     }
 }
 
-/// Joins `p` to a game and reports the result. Shared with `/mga join`.
+/// Joins `p` to a game and reports the result. Shared with `/dbmg join`.
 pub fn join(
     server: &Server,
     sender: &CommandSender,
